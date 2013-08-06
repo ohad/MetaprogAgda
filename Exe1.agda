@@ -195,10 +195,12 @@ I : Normal
 I = One / (λ _ → 1)
 
 _+Nat_ : Nat -> Nat -> Nat
-x +Nat y = {!!}
+zero +Nat y  = y
+suc x +Nat y = suc (x +Nat y)
 
 _*Nat_ : Nat -> Nat -> Nat
-x *Nat y = {!!}
+zero *Nat y = zero
+suc x *Nat y = y +Nat (x *Nat y)
 
 _+N_ : Normal -> Normal -> Normal
 (ShF / szF) +N (ShG / szG) = (ShF + ShG) / ^ szF <?> szG
