@@ -160,6 +160,13 @@ What other structure does it preserve?-}
 idTraverse : Traversable id
 idTraverse = record { traverse = id }
 
+compTraverse : forall {F G} -> Traversable F -> Traversable G 
+                 -> Traversable (F o G)
+compTraverse tF tG = 
+  record { 
+    traverse = λ h s → traverse {{tF}} (traverse {{tG}} h) s
+  }
+
 --\section{Normal Functors}
 
 record Normal : Set1 where
