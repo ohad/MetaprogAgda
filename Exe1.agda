@@ -167,6 +167,8 @@ compTraverse tF tG =
     traverse = λ h s → traverse {{tF}} (traverse {{tG}} h) s
   }
 
+-- Todo: Finish on a by-need basis?
+
 --\section{Normal Functors}
 
 record Normal : Set1 where
