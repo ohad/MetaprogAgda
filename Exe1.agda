@@ -113,12 +113,12 @@ record Monad (F : Set -> Set) : Set1 where
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
 open Monad {{...}} public
 
-drop : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
-drop (x , xs) = xs
 
 mult : {n : Nat} -> {X : Set} -> Vec (Vec X n) n -> Vec X n
 mult {zero} vss = <>
-mult {suc n} ((x , v) , vs) = x , mult (map drop  vs)
+mult {suc n} ((x , v) , vs) = x , mult (map drop  vs) where
+  drop : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
+  drop (x , xs) = xs
 
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
 monadVec = record { return  = vec; _>>=_ = λ vs f → mult (map f vs)}
@@ -319,11 +319,36 @@ morphN {F} f s = f (s , upto (size F s))
 _><_ : Normal -> Normal -> Normal
 (ShF / szF) >< (ShG / szG) = (ShF * ShG) / vv \ f g -> szF f *Nat szG g
 
-swap : (F G : Normal) -> (F >< G) -N> (G >< F)
-swap F G x = {!!}
+-- Bounded arithmetic
 
---drop : (F G : Normal) -> (F >< G) -N> (F oN G)
---drop F G x = {!!}
+shift : {n m : Nat} -> (i : Fin m) -> Fin (n +Nat m)
+shift {zero} i = i
+shift {suc n} i = suc (shift {n} i)
+
+_+Fin_ : {m n : Nat} -> (i : Fin m) -> (j : Fin n) -> Fin (m +Nat n)
+_+Fin_ {suc m} {n} zero  j = shift {suc m} {n} j
+suc i +Fin j = suc (i +Fin j)
+
+_*Fin_ : {m n : Nat} -> (i : Fin m) -> (j : Fin n) -> Fin (m *Nat n)
+_*Fin_ {suc m} {zero} zero ()
+_*Fin_ {suc m} {suc n} zero j = zero
+suc i *Fin j = j +Fin (i *Fin j)
+
+kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n 
+               -> Vec (Vec (X * Y) n) m
+kroenecker xs ys = vmap (λ x → vmap (λ y → x , y) ys) xs
+
+flatten : {m n : Nat} {X : Set} -> Vec (Vec X n) m -> Vec X (m *Nat n)
+flatten {zero} <> = <>
+flatten {suc m} (v , M) = v ++ flatten M
+
+swap : (F G : Normal) -> (F >< G) -N> (G >< F)
+swap F G (sF , sG) = (sG , sF) , {!!} where
+  foo : {!!}
+  foo = kroenecker (upto (size F sF)) (upto (size G sG))
+
+drop : (F G : Normal) -> (F >< G) -N> (F oN G)
+drop F G x = {!!}
 
 
 --\section{Proving Equations}
@@ -410,7 +435,10 @@ listNMonoidOK {X} = record
                              with MonoidOK.absorbR natMonoidOK m
     (suc m , (x , xs)) ++N<> | q = {!!}
 
-baz : {!!}
+baz : (x : Nat) →
+        (record { neut = 0; _&_ = _+Nat_ } Monoid.& x)
+        (Monoid.neut (record { neut = 0; _&_ = _+Nat_ }))
+        == x
 baz = MonoidOK.absorbR natMonoidOK 
 
 {-
