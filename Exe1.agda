@@ -99,10 +99,12 @@ applicativeId = record { pure = id;
                          _<*>_ = id }
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
-applicativeComp {F} {G} aF aG = record { 
-  pure  = pure {{aF}} o pure ;
-  _<*>_ = _<*>_ {{aF}} o map {{applicativeEndoFunctor {{aF}}}} _<*>_ 
-}
+applicativeComp {F} {G} aF aG = 
+  record {   
+           pure  = pure {{aF}} o pure ;  
+           _<*>_  = _<*>_ {{aF}} o 
+                         map {{applicativeEndoFunctor {{aF}}}} _<*>_ 
+  }
 
 record Monoid (X : Set) : Set where
   infixr 4 _&_
