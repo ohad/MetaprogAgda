@@ -32,19 +32,22 @@ data Vec (X : Set) : Nat -> Set where
   _,_  : {n : Nat} -> X -> Vec X n ->  Vec X (suc n)
 
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 ss ts = {!!}
+zip1 <> <> = <>
+zip1 (s , ss) (t , ts) = (s , t) , zip1 ss ts
 
 vec : forall {n X} -> X -> Vec X n
-vec {n} x = {!!}
+vec {zero} x = <>
+vec {suc n} x = x , vec x
 
 vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
-vapp fs ss = {!!}
+vapp <> <> = <>
+vapp (f , fs) (s , ss) = (f s) , vapp fs ss
 
 vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
-vmap f ss = {!!}
+vmap f ss = vapp (vec f) ss
 
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip2 ss ts = {!!}
+zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 
 record EndoFunctor (F : Set -> Set) : Set1 where
   field
@@ -81,14 +84,25 @@ record Monad (F : Set -> Set) : Set1 where
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
 open Monad {{...}} public
 
+drop : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
+drop (x , xs) = xs
+
+mult : {n : Nat} -> {X : Set} -> Vec (Vec X n) n -> Vec X n
+mult {zero} vss = <>
+mult {suc n} ((x , v) , vs) = x , mult (map drop  vs)
+
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
-monadVec = {!!}
+monadVec = record { return  = vec; _>>=_ = λ vs f → mult (map f vs)}
 
 applicativeId : Applicative id
-applicativeId = {!!}
+applicativeId = record { pure = id; 
+                         _<*>_ = id }
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
-applicativeComp aF aG = {!!}
+applicativeComp {F} {G} aF aG = record { 
+  pure  = pure {{aF}} o pure ;
+  _<*>_ = _<*>_ {{aF}} o map {{applicativeEndoFunctor {{aF}}}} _<*>_ 
+}
 
 record Monoid (X : Set) : Set where
   infixr 4 _&_
@@ -225,6 +239,7 @@ record MonoidOK X {{M : Monoid X}} : Set where
     absorbR  : (x : X) ->      x & neut == x
     assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
 
+{- 
 natMonoidOK : MonoidOK Nat
 natMonoidOK = record
   {  absorbL  = \ _ -> refl
@@ -241,6 +256,7 @@ natMonoidOK = record
 
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = {!!}
+-}
 
 {-
 \begin{exe}[a not inconsiderable problem]
