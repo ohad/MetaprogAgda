@@ -112,11 +112,23 @@ record Monoid (X : Set) : Set where
     neut  : X
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
-  monoidApplicative = {!!}
+  monoidApplicative = 
+    record { 
+      pure = λ _ → neut; 
+      _<*>_ = λ x y → x & y 
+    }
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 
 --Show by construction that the pointwise product of |Applicative|s is
 -- |Applicative|.
+
+ptwsApplicative : forall { F G } -> Applicative F -> Applicative G 
+                    -> Applicative (\ X -> (F X) * (G X))
+ptwsApplicative aF aG = 
+  record { 
+    pure = λ x → (pure x) , (pure x);
+    _<*>_ = ^ (λ fF gG → ^ (λ sF sG → (fF <*> sF) , (gG <*> sG)))
+  }
 
 record Traversable (F : Set -> Set) : Set1 where
   field
@@ -204,7 +216,7 @@ nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
 nPair F G fxgx = {!!}
 
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = {!!}
+listNMonoid = λ {X} → record { neut = zero , _; _&_ = λ z z₁ → {!!} , _ }
 
 sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
