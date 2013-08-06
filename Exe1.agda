@@ -224,10 +224,11 @@ nOut F G xs' with nCase F G xs'
 nOut F G .(nInj F G xs) | from xs = xs
 
 _++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
-xs ++ ys = {!!}
+<> ++ ys = ys
+(x , xs) ++ ys = x , (xs ++ ys)
 
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G fxgx = {!!}
+nPair F G ((sF , vF) , (sG , vG)) = (sF , sG) , (vF ++ vG )
 
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = λ {X} → record { neut = zero , _; _&_ = λ z z₁ → {!!} , _ }
