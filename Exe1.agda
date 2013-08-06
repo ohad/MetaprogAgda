@@ -239,9 +239,8 @@ nProj : forall { X } F G (s : <! F *N G !>N X) -> (nPair F G) ^-1 s
 nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG 
 nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w)) 
 
-{-
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = λ {X} → record { neut = zero , _; _&_ = λ z z₁ → {!!} , _ }
+listNMonoid = {!!}
 
 sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
@@ -278,7 +277,6 @@ record MonoidOK X {{M : Monoid X}} : Set where
     absorbR  : (x : X) ->      x & neut == x
     assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
 
-{- 
 natMonoidOK : MonoidOK Nat
 natMonoidOK = record
   {  absorbL  = \ _ -> refl
@@ -295,7 +293,6 @@ natMonoidOK = record
 
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = {!!}
--}
 
 {-
 \begin{exe}[a not inconsiderable problem]
@@ -337,4 +334,4 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
       map {{FF}}{X} id =1= id
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
--}
+
