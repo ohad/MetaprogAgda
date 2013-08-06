@@ -239,8 +239,11 @@ nProj : forall { X } F G (s : <! F *N G !>N X) -> (nPair F G) ^-1 s
 nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG 
 nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w)) 
 
+monmult : forall {X} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
+monmult (n , xs) (m , ys) = (n +Nat m) , (xs ++ ys)
+
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = {!!}
+listNMonoid = λ {X} → record { neut = zero , <>; _&_ = monmult }
 
 sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
@@ -252,14 +255,14 @@ normalTraversable F = record
 _oN_ : Normal -> Normal -> Normal
 F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
 
-sizeT : forall {F}{{TF : Traversable F}}{X} -> F X -> Nat
-sizeT = crush (\ _ -> 1)
+--sizeT : forall {F}{{TF : Traversable F}}{X} -> F X -> Nat
+--sizeT = crush (\ _ -> 1)
 
-normalT : forall F {{TF : Traversable F}} -> Normal
-normalT F = F One / sizeT
+--normalT : forall F {{TF : Traversable F}} -> Normal
+--normalT F = F One / sizeT
 
-shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
-shapeT = traverse (\ _ -> <>)
+--shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
+--shapeT = traverse (\ _ -> <>)
 
 one : forall {X} -> X -> <! ListN !>N X
 one x = 1 , (x , <>)
@@ -270,6 +273,7 @@ contentsT = crush one
 
 --\section{Proving Equations}
 
+{-
 
 record MonoidOK X {{M : Monoid X}} : Set where
   field
@@ -335,3 +339,4 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
 
+-}
