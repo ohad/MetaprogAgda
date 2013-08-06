@@ -189,10 +189,10 @@ ListN = Nat / id
 
 
 K : Set -> Normal
-K A = {!!}
+K A = A / (λ a → zero)
 
 I : Normal
-I = {!!}
+I = One / (λ _ → 1)
 
 _+Nat_ : Nat -> Nat -> Nat
 x +Nat y = {!!}
