@@ -157,6 +157,9 @@ crush {{M = M}} =
 {-Show that |Traversable| is closed under identity and composition.
 What other structure does it preserve?-}
 
+idTraverse : Traversable id
+idTraverse = record { traverse = id }
+
 --\section{Normal Functors}
 
 record Normal : Set1 where
