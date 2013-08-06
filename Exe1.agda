@@ -146,7 +146,7 @@ traversableVec = record { traverse = vtr } where
   vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
 
 transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
-transpose = {!!}
+transpose = traverse id
 
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
