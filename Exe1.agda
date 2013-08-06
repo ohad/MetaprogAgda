@@ -230,6 +230,16 @@ _++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
 nPair F G ((sF , vF) , (sG , vG)) = (sF , sG) , (vF ++ vG )
 
+concatSurjectivity : forall {m n : Nat} {X} -> (x : Vec X (m +Nat n)) -> (^ \ (u : Vec X m) (v : Vec X n) -> u ++ v)  ^-1 x
+concatSurjectivity {zero} v = from (<> , v)
+concatSurjectivity {suc m} (x , v) with concatSurjectivity {m} v
+concatSurjectivity {suc m} (x , .(u ++ w)) | from (u , w) = from ((x , u) , w)
+
+nProj : forall { X } F G (s : <! F *N G !>N X) -> (nPair F G) ^-1 s
+nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG 
+nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w)) 
+
+{-
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = λ {X} → record { neut = zero , _; _&_ = λ z z₁ → {!!} , _ }
 
@@ -327,4 +337,4 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
       map {{FF}}{X} id =1= id
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
-
+-}
