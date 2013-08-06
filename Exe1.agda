@@ -273,7 +273,7 @@ contentsT = crush one
 
 --\section{Proving Equations}
 
-{-
+
 
 record MonoidOK X {{M : Monoid X}} : Set where
   field
@@ -295,9 +295,67 @@ natMonoidOK = record
   assoc+ zero     y z                       = refl
   assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
 
-listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
-listNMonoidOK {X} = {!!}
+_++L_ : forall {X } -> List X -> List X -> List X
+<> ++L ys = ys
+(x , xs) ++L ys = x , (xs ++L ys)
 
+listMonoid : {X : Set} -> Monoid (List X)
+listMonoid {X} = record { neut = <>; _&_ = _++L_ }
+
+listMonoidOK : {X : Set} -> MonoidOK (List X)
+listMonoidOK {X} = record 
+  { 
+    absorbL = λ _ → refl; 
+    absorbR = _++L<>; 
+    assoc = {!assoc++L!} 
+  } where
+    _++L<> : forall xs -> xs ++L <> == xs
+    <> ++L<> = refl
+    (x , xs) ++L<> rewrite xs ++L<> = refl
+
+    lemma : forall xs ys y -> xs ++L (y , ys) == (xs ++L (y , <>)) ++L ys
+    lemma <> ys y = refl
+    lemma (x , xs) ys y rewrite lemma xs ys y = refl
+
+    assoc++L : forall xs ys zs -> (xs ++L ys) ++L zs == xs ++L (ys ++L zs)
+    assoc++L xs <> zs rewrite xs ++L<> = refl
+    assoc++L xs (y , ys) zs rewrite lemma xs ys y 
+                            |       assoc++L (xs ++L (y , <>)) ys zs 
+                            |       lemma xs (ys ++L zs) y = refl
+
+<>N : {X : Set} -> <! ListN !>N X
+<>N = λ {X} → zero , <>
+
+_++N_ : {X : Set} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
+(zero , <>) ++N (n , ys) = n , ys
+(suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys) 
+(suc m , (x , xs)) ++N (n , ys) | k , r  = suc k , (x , r)
+
+concatLength : forall {X : Set} m (xs : Vec X m) n (ys : Vec X n) -> ((m , xs) ++N (n , ys)) == ((m +Nat n) , (xs ++ ys))
+concatLength zero <> n ys = refl
+concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
+
+_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> rewrite
+MonoidOK.absorbR natMonoidOK n (xs ++ <> == xs) 
+xs ++<> = ?
+
+listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
+listNMonoidOK {X} = record 
+  { 
+    absorbL = λ x → refl; 
+    absorbR = {!_++N<>!}; 
+    assoc = {!!} 
+  } where
+    _++N<> : forall xs -> xs ++N <>N == xs
+    (zero , <>) ++N<> = refl
+    (suc m , (x , xs)) ++N<> rewrite concatLength m xs 0 <> 
+--                             rewrite MonoidOK.absorbR 
+                             with MonoidOK.absorbR natMonoidOK m
+    (suc m , (x , xs)) ++N<> | q = {!!}
+
+baz : {!!}
+baz = MonoidOK.absorbR natMonoidOK 
+{-
 {-
 \begin{exe}[a not inconsiderable problem]
 Find out what goes wrong when you try to state associativity of vector |++|,
