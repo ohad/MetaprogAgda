@@ -77,7 +77,7 @@
 
 \begin{document}
 
-\title{Dependently Typed Metaprogramming: \\ (in Agda)}
+\title{Dependently Typed Metaprogramming \\ (in Agda)}
 \author{Conor McBride}
 \maketitle
 
@@ -107,9 +107,16 @@ your own dependently typed language, or maybe one day in mine.
 
 %include STLC.lagda
 
+
 \chapter{Containers and W-types}
 
+%include Containers.lagda
+
+
 \chapter{Indexed Containers (Levitated)}
+
+%include IxCon.lagda
+
 
 \chapter{Induction-Recursion}
 

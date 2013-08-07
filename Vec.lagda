@@ -52,7 +52,7 @@ infixr 4 _,_
 %format * = "\F{\times}"
 %format + = "\F{+}"
 %format _+_ = "\_\!" + "\!\_"
-%format ^ = "{\scriptstyle\mathrm{V}}"
+%format vv = "\raisebox{0.02in}{\ensuremath{\F{\scriptstyle\mathrm{V}}}}"
 %format One = "\D{One}"
 %format zip0 = "\F{zip}"
 
@@ -361,6 +361,45 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %endif
 \end{exe}
 
+\begin{exe}[Finite sets and projection from vectors]
+We may define a type of finite sets, suitable for indexing into vectors, as follows:
+\begin{code}
+data Fin : Nat -> Set where
+  zero : {n : Nat} -> Fin (suc n)
+  suc  : {n : Nat} -> Fin n -> Fin (suc n)
+\end{code}
+
+Implement projection:
+%format proj = "\F{proj}"
+\begin{spec}
+proj : forall {n X} -> Vec X n -> Fin n -> X
+proj xs i = ?
+\end{spec}
+%if False
+\begin{code}
+proj : forall {n X} -> Vec X n -> Fin n -> X
+proj <> ()
+proj (x , xs) zero = x
+proj (x , xs) (suc i) = proj xs i
+\end{code}
+%endif
+
+Implement, tabulation, the inverse of projection.
+%format tabulate = "\F{tabulate}"
+\begin{spec}
+tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
+tabulate {n} f = ?
+\end{spec}
+Hint: think higher order.
+%if False
+\begin{code}
+tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
+tabulate {zero} _ = <>
+tabulate {suc n} f = f zero , tabulate (f o suc)
+\end{code}
+%endif
+\end{exe}
+
 
 \section{Applicative and Traversable Structure}
 
@@ -430,7 +469,9 @@ endoFunctorVec  = applicativeEndoFunctor
 Indeed, the definition of |endoFunctorVec| already makes use of way
 |itsEndoFunctor| searches the context and finds |applicativeVec|.
 
-There are lots of applicative functors about the place. Here's another
+There are lots of applicative functors about the place. Here's
+\nudge{|proj| and |tabulate| turn the |vec| and |vapp| applicative into this one.}
+another
 famous one:
 \begin{code}
 applicativeFun : forall {S} -> Applicative \ X -> S -> X
@@ -604,53 +645,13 @@ What other structure does it preserve?
 \end{exe}
 
 
-\section{Normal Functors}
-
-A \emph{normal} functor is given, up to isomorphism, by a set of \emph{shapes}
-and a function which assigns to each shape a \emph{size}. It is interpreted
-as the \emph{dependent pair} of a shape, |s|, and a vector of elements whose
-length is the size of |s|.
-
-%format Normal = "\D{Normal}"
-%format Shape = "\F{Shape}"
-%format size = "\F{size}"
-%format / = "\C{/}"
-%format _/_ = "\_\!" / "\!\_"
-%format <! = "\F{\llbracket}"
-%format !> = "\F{\rrbracket}"
-%format !>N = !> "_{\F{N}}"
-%format <!_!>N = <! "\!" _ "\!" !>N
-\begin{code}
-record Normal : Set1 where
-  constructor _/_
-  field
-    Shape  : Set
-    size   : Shape -> Nat
-  <!_!>N : Set -> Set
-  <!_!>N X = Sg Shape \ s -> Vec X (size s)
-open Normal public
-infixr 0 _/_
-\end{code}
-
-%format VecN = "\F{VecN}"
-%format ListN = "\F{ListN}"
-
-Let us have two examples.
-Vectors are the normal functors with a unique shape. Lists are the normal functors
-whose shape is their size.
-\begin{code}
-VecN : Nat -> Normal
-VecN n = One / pure n
-
-ListN : Normal
-ListN = Nat / id
-\end{code}
+\section{|Sg|-types and Other Equipment}
 
 Before we go any further, let us establish that the type |Sg (S : Set)
 (T : S -> Set)| has elements |(s : S) , (t : T s)|, so that the type
 of the second component depends on the value of the first. From |p :
 Sg S T|, we may project |fst p : S| and |snd p : T (fst p)|, but I
-also define |^| to be a low precedence uncurrying operator, so that |^ \
+also define |^| to be a low precedence uncurrying operator, so that |vv \
 s t -> ...| gives access to the components.
 
 On the one hand, we may take |S * T = Sg S \ _ -> T|
@@ -683,11 +684,18 @@ S + T = Sg Two (S <?> T)
 Note that |<?>| has been defined to work at all levels of the predicative
 hierarchy, so that we can use it to choose between |Set|s, as well as between
 ordinary values. |Sg| thus models both choice and pairing in data structures.
+That is, |Sg| generalizes binary product to the dependent case, and binary sum
+to arbitrary arity. I advise calling a |Sg|-type neither a `dependent sum' nor
+a `dependent product' (for a dependent function type is a something-adic product),
+but rather a `dependent pair type'.
 
-I don't know about you, but I find I do a lot more arithmetic with types than I
-do with numbers, which is why I have used |*| and |+| for |Set|s. Developing a
-library of normal functors will, however, necessitate arithmetic on sizes as
-well as shapes.
+
+\section{Arithmetic}
+
+I don't know about you, but I find I do a lot more arithmetic with
+types than I do with numbers, which is why I have used |*| and |+| for
+|Set|s. However, we shall soon need a little arithmetic for the sizes
+of things.
 
 %format +Nat = + "_{\!" Nat "}"
 %format *Nat = * "_{\!" Nat "}"
@@ -715,783 +723,7 @@ suc x *Nat y = y +Nat (x *Nat y)
 %endif
 \end{exe}
 
-%format +N = + "_{\!\F{N}}"
-%format _+N_ = "\us{" +N "}"
-%format *N = * "_{\!\F{N}}"
-%format _*N_ = "\us{" *N "}"
-Let us construct sums and products of normal functors.
-\begin{code}
-_+N_ : Normal -> Normal -> Normal
-(ShF / szF) +N (ShG / szG) = (ShF + ShG) / ^ szF <?> szG
-
-_*N_ : Normal -> Normal -> Normal
-(ShF / szF) *N (ShG / szG) = (ShF * ShG) / ^ \ f g -> szF f +Nat szG g
-\end{code}
-
-Of course, it is one thing to construct these binary operators on |Normal|,
-but quite another to show they are worthy of their names.
-
-%format nInj = "\F{nInj}"
-\begin{code}
-nInj : forall {X}(F G : Normal) -> <! F !>N X + <! G !>N X -> <! F +N G !>N X
-nInj F G (tt , ShF , xs) = (tt , ShF) , xs
-nInj F G (ff , ShG , xs) = (ff , ShG) , xs
-\end{code}
-
-Now, we could implement the other direction of the isomorphism, but an
-alternative is to define the \emph{inverse image}.
-
-%format ^-1 = "{}^{\F{ -1}}"
-%format from = "\C{from}"
-\begin{code}
-data _^-1_ {S T : Set}(f : S -> T) : T -> Set where
-  from : (s : S) -> f ^-1 f s
-\end{code}
-
-%format nCase = "\F{nCase}"
-Let us now show that |nInj| is surjective.
-\begin{code}
-nCase : forall {X} F G (s : <! F +N G !>N X) -> nInj F G ^-1 s
-nCase F G ((tt , ShF) , xs) = from (tt , ShF , xs)
-nCase F G ((ff , ShG) , xs) = from (ff , ShG , xs)
-\end{code}
-That is, we have written more or less the other direction of the iso,
-but we have acquired some of the correctness proof for the cost of
-asking. We shall check that |nInj| is injective shortly, once we have
-suitable equipment to say so.
-
-The inverse of `nInj` can be computed by |nCase| thus:
-%format nOut = "\F{nOut}"
-\begin{code}
-nOut : forall {X}(F G : Normal) -> <! F +N G !>N X -> <! F !>N X + <! G !>N X
-nOut F G xs' with nCase F G xs'
-nOut F G .(nInj F G xs) | from xs = xs
-\end{code}
-The |with| notation allows us to compute smoe useful information and add
-it to the collection of things available for inspection in pattern matching.
-By matching the result of |nCase F G xs'| as |from xs|, we discover that
-\emph{ipso facto}, |xs'| is |nInj xs|. It is in the nature of dependent
-types that inspecting one piece of data can refine our knowledge of the whole
-programming problem, hence McKinna and I designed |with| as a syntax for
-bringing new information to the problem. The usual Burstallian
-`case expression' focuses on one scrutinee and shows us its refinements,
-but hides from us the refinement of the rest of the problem: in simply
-typed programming there is no such refinement, but here there is. Agda
-prefixes with a dot those parts of patterns, not necessarily linear
-constructor forms, which need not be checked dynamically because the
-corresponding value must be as indicated in any well typed usage.
-
-\begin{exe}[normal pairing]
-Implement the constructor for normal functor pairs. It may help to
-define vector concatenation.
-%format nPair = "\F{nPair}"
-%format ++ = "\F{+\!\!+}"
-%format _++_ = "\us{" ++ "}"
-\begin{spec}
-_++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
-xs ++ ys = ?
-
-nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G fxgx = ?
-\end{spec}
-Show that your constructor is surjective.
-%if False
-\begin{code}
-_++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
-<> ++ ys = ys
-(x , xs) ++ ys = x , (xs ++ ys)
-
-nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G ((ShF , xs) , (ShG , ys)) = (ShF , ShG) , xs ++ ys
-\end{code}
-%% too lazy for surj, the now
-%endif
-\end{exe}
-
-\begin{exe}[|ListN| monoid]
-While you are in this general area, construct (from readily available components)
-the usual monoid structure for our normal presentation of lists.
-\begin{spec}
-listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = ?
-\end{spec}
-%format listNMonoid = "\F{listNMonoid}"
-%if False
-\begin{code}
-listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = record
-  {  neut  = 0 , <>
-  ;  _&_   = ^ \ xn xs -> ^ \ yn ys -> xn +Nat yn , xs ++ ys 
-  }
-\end{code}
-%endif
-\end{exe}
-
-We have already seen that the identity functor |VecN 1| is |Normal|, but can
-we define composition?
-%format oN = "\F{\circ_{\!N}}"
-%format _oN_ = "\us{" oN "}"
-\begin{spec}
-_oN_ : Normal -> Normal -> Normal
-F oN (ShG / szG) = ? / ?
-\end{spec}
-To choose the shape for the composite, we need to know the outer shape, and
-then the inner shape at each element position. That is:
-\begin{spec}
-_oN_ : Normal -> Normal -> Normal
-F oN (ShG / szG) = <! F !>N ShG / {!!}
-\end{spec}
-Now, the composite must have a place for each element of each inner structure,
-so the size of the whole is the sum of the sizes of its parts. That is to say,
-we must traverse the shape, summing the sizes of each inner shape therein.
-Indeed, we can use |traverse|, given that |Nat| is a monoid for |+N| and
-that |Normal| functors are traversable because vectors are.
-%format sumMonoid = "\F{sumMonoid}"
-%format normalTraversable = "\F{normalTraversable}"
-\begin{code}
-sumMonoid : Monoid Nat
-sumMonoid = record { neut = 0; _&_ = _+Nat_ }
-
-normalTraversable : (F : Normal) -> Traversable <! F !>N
-normalTraversable F = record
-  { traverse = \ {{aG}} f -> ^ \ s xs -> pure {{aG}}  (_,_ s) <*> traverse f xs }
-\end{code}
-
-Armed with this structure, we can implement the composite size operator as a
-|crush|.
-\begin{code}
-_oN_ : Normal -> Normal -> Normal
-F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
-\end{code}
-
-The fact that we needed only the |Traversable| interface to |F| is a bit of a
-clue to a connection between |Traversable| and |Normal| functors.
-|Traversable| structures have a notion of size induced by the |Monoid|
-structure for |Nat|:
-%format listNMonoid = "\F{listNMonoid}"
-%format sizeT = "\F{sizeT}"
-\begin{code}
-sizeT : forall {F}{{TF : Traversable F}}{X} -> F X -> Nat
-sizeT = crush (\ _ -> 1)
-\end{code}
-
-Hence, every |Traversable| functor has a |Normal| counterpart
-%format normalT = "\F{normalT}"
-\begin{code}
-normalT : forall F {{TF : Traversable F}} -> Normal
-normalT F = F One / sizeT
-\end{code}
-where the shape is an |F| with placeholder elements and the size is the number
-of such places.
-
-Can we put a |Traversable| structure into its |Normal| representation?
-We can certainly extract the shape:
-%format shapeT = "\F{shapeT}"
-\begin{code}
-shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
-shapeT = traverse (\ _ -> <>)
-\end{code}
-We can also define the list of elements, which should have the same length as
-the size
-%format contentsT = "\F{contentsT}"
-%format one = "\F{one}"
-\begin{code}
-one : forall {X} -> X -> <! ListN !>N X
-one x = 1 , (x , <>)
-
-contentsT : forall {F}{{TF : Traversable F}}{X} -> F X -> <! ListN !>N X
-contentsT = crush one
-\end{code}
-and then try
-%format toNormal = "\F{toNormal}"
-\begin{spec}
-toNormal : forall {F}{{TF : Traversable F}}{X} -> F X -> <! normalT F !>N X
-toNormal fx = BAD (shapeT fx , snd (contentsT fx))
-\end{spec}
-but it fails to typecheck because the size of the shape of |fx|
-is not obviously the length of the contents of |fx|.
-The trouble is that |Traversable F| is
-underspecified. In due course, we shall discover that it means 
-just that
-|F| is naturally isomorphic to |<! normalT F !>N|.\nudge{Check this.}
-To see this, however, we shall need the capacity to reason equationally.
-
-
-\section{Proving Equations}
-
-The best way to start a fight in a room full of type theorists is to
-bring up the topic of \emph{equality}.\nudge{Never trust a type
-theorist who has not changed their mind about equality at least once.}
-There's a huge design space, not least because we often have \emph{two}
-notions of equality to work with, so we need to design both and their
-interaction.
-
-%format jeq = "\equiv"
-
-On the one hand, we have \emph{judgmental} equality. Suppose you have
-|s : S| and you want to put |s| where a value of type |T| is
-expected. Can you? You can if |S jeq T|. Different systems specify
-|jeq| differently. Before dependent types arrived, syntactic equality
-(perhaps up to $\alpha$-conversion) was often enough.
-
-In dependently typed languages, it is quite convenient if |Vec X (2 +
-2)| is the same type as |Vec X 4|, so we often consider types up to
-the $\alpha\beta$-conversion of the $\lambda$-calculus further
-extended by the defining equations of total functions. If we've been
-careful enough to keep the \emph{open-terms} reduction of the language
-strongly normalizing, then |jeq| is decidable, by
-normalize-and-compare in theory and by more carefully tuned heuristics
-in practice.
-
-%format !!!- = "\vdash"
-%format == = "\D{\simeq}"
-%format refl = "\C{refl}"
-
-Agda takes things a little further by supporting $\eta$-conversion at
-some `negative' types---specifically, function types and record
-types---where a type-directed and terminating $\eta$-expansion makes
-sense. Note that a \emph{syntax}-directed `tit-for-tat' approach,
-e.g. testing |f jeq \ x -> t| by testing |x !!!- f x jeq t| or |p jeq
-(s , t)| by |fst p jeq s| and |snd p = t|, works fine because two
-non-canonical functions and pairs are equal if and only if their
-expansions are. But if you want the $eta$-rule for |One|, you need a
-cue to notice that |u jeq v| when both inhabit |One| and neither is |<>|.
-
-It is always tempting (hence, dangerous) to try to extract more work
-from the computer by making judgmental equality admit more equations
-which we consider morally true, but it is clear that any
-\emph{decidable} judgmental equality will always
-disappont---extensional equality of functions is undecidable, for
-example. Correspondingly, the equational theory of \emph{open} terms
-(conceived as functions from valuations of their variables) will always
-be to some extent beyond the ken of the computer.
-
-The remedy for our inevitable disappointment with judgmental equality
-is to define a notion of \emph{evidence} for equality. It is standard
-practice to establish decidable certificate-checking for undecidable
-problems, and we have a standard mechanism for so doing---checking
-types.  Let us have types |s == t| inhabited by proofs that |s| and
-|t| are equal.  We should ensure that |t == t| for all |t|, and that
-for all |P|, |s == t -> P s -> P t|, in accordance with the philosophy
-of Leibniz. On this much, we may agree. But after that, the fight
-starts.
-
-The above story is largely by way of an apology for the following
-declaration.
-%format _==_ = "\us{" == "}"
-\nudge{The size of equality types is also moot. Agda would allow us to
-put |s == t| in |Set|, however large |s| and |t| may be...}
-\begin{spec}
-data _==_ {l}{X : Set l}(x : X) : X -> Set l where
-  refl : x == x
-infix 1 _==_
-\end{spec}
-We may certainly implement Leibniz's rule.
-%format subst = "\F{subst}"
-\begin{spec}
-subst :  forall {k l}{X : Set k}{s t : X} ->
-         s == t -> (P : X -> Set l) -> P s -> P t
-subst refl P p = p
-\end{spec}
-
-The only canonical proof of |s == t| is |refl|, available only if |s
-jeq t|, so we have declared that the equality predicate for
-\emph{closed} terms is whatever judgmental equality we happen to have
-chosen. We have sealed our disappointment in, but we have gained the
-abilty to prove useful equations on \emph{open} terms.
-Moreover, the restriction to the judgmental equality is fundamental to
-the computational behaviour of our |subst| implementation: we take |p : P s|
-and we return it unaltered as |p : P t|, so we need to ensure that |P s jeq P t|,
-and hence that |s jeq t|. If we want to make |==| larger than |jeq|, we need
-a more invasive approach to transporting data between provably equal types.
-For now, let us acknowledge the problem and make do.
-
-We may register equality with Agda, via the following pragmas,
-\nudge{...but for this pragma, we need |_==_ {l}{X} s t : Set l|}
-\begin{verbatim}
-{-# BUILTIN EQUALITY _==_ #-}
-{-# BUILTIN REFL refl #-}
-\end{verbatim}
-and thus gain access to Agda's support for equational reasoning.
-
-%format "MonoidOK" = "\D{MonoidOK}"
-%format absorbL = "\F{absorbL}"
-%format absorbR = "\F{absorbR}"
-%format assoc = "\F{assoc}"
-Now that we have some sort of equality, we can specify laws for our
-structures, e.g., for |Monoid|.
-\begin{code}
-record MonoidOK X {{M : Monoid X}} : Set where
-  field
-    absorbL  : (x : X) ->      neut & x == x
-    absorbR  : (x : X) ->      x & neut == x
-    assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
-\end{code}
-
-%format natMonoidOK = "\F{natMonoidOK}"
-Let's check that |+Nat| really gives a monoid.
-%format assoc+ = "\F{assoc+}"
-\begin{code}
-natMonoidOK : MonoidOK Nat
-natMonoidOK = record
-  {  absorbL  = \ _ -> refl
-  ;  absorbR  = _+zero
-  ;  assoc    = assoc+
-  }  where    -- see below
-\end{code}
-The |absorbL| law follows by computation, but the other two require inductive
-proof.
-%format +zero = "\F{+zero}"
-%format _+zero = "\_\!" +zero
-\begin{code}
-  _+zero : forall x -> x +Nat zero == x
-  zero   +zero                  = refl
-  suc n  +zero rewrite n +zero  = refl
-
-  assoc+ : forall x y z -> (x +Nat y) +Nat z  == x +Nat (y +Nat z)
-  assoc+ zero     y z                       = refl
-  assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
-\end{code}
-The usual inductive proofs become structurally recursive functions,
-pattern matching on the argument in which |+Nat| is strict, so that
-computation unfolds. Sadly, an Agda\nudge{differently from the
-way in which a Coq script also does not} program, seen as a proof document
-does not show you the subgoal structure. However, we can see that
-the base case holds computationally and the step case becomes trivial
-once we have rewritten the goal by the inductive hypothesis (being the
-type of the structurally recursive call).
-
-%format listNMonoidOK = "\F{listNMonoidOK}"
-\begin{exe}[|ListN| monoid]
-This is a nasty little exercise. By all means warm up by proving that
-|List X| is a monoid with respect to concatenation, but I want you to
-have a crack at
-\begin{spec}
-listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
-listNMonoidOK {X} = ?
-\end{spec}
-Hint 1: use \emph{curried} helper functions to ensure structural recursion.
-The inductive step cases are tricky because the
-hypotheses equate number-vector pairs, but the components of those pairs
-are scattered in the goal, so |rewrite| will not help. Hint 2: use
-|subst| with a predicate of form |^ \ n xs -> ...|, which will allow you
-to abstract over separated places with |n| and |xs|.
-%if False
-\begin{code}
-listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
-listNMonoidOK {X} = record
-  {  absorbL  = \ _ -> refl
-  ;  absorbR  = ^ aR
-  ;  assoc    = ^ aa
-  }  where
-  aR : forall n (xs : Vec X n) ->
-       (n , xs) & neut {{listNMonoid}} == (n , xs)
-  aR .zero    <>        = refl
-  aR (suc n)  (x , xs)  =
-    subst (aR n xs) (^ \ m ys -> suc (n +Nat 0) , x , xs ++ <> == suc m , x , ys)
-      refl
-  aa : forall n (xs : Vec X n)(ys zs : <! ListN !>N X) ->
-       ((n , xs) & ys) & zs == (n , xs) & (ys & zs)
-  aa .zero    <>        _         _         = refl
-  aa (suc n)  (x , xs)  (i , ys)  (j , zs)  =
-     subst (aa n xs (i , ys) (j , zs))
-       (^ \ m ws ->  _==_ {_}{<! ListN !>N X}
-         (suc ((n +Nat i) +Nat j) , (x , (xs ++ ys) ++ zs)) (suc m , (x , ws)))
-       refl
-\end{code}
-%endif
-\end{exe}
-
-\begin{exe}[a not inconsiderable problem]
-Find out what goes wrong when you try to state associativity of vector |++|,
-let alone prove it. What does it tell you about our |==| setup?
-\end{exe}
-
-A \emph{monoid homomorphism} is a map between their carrier sets which
-respects the operations.
-%format MonoidHom = "\D{MonoidHom}"
-%format respNeut = "\F{resp}" neut
-%format resp& = "\F{resp}" &
-\begin{code}
-record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set where
-  field
-    respNeut  :                 f neut == neut
-    resp&     : forall x x' ->  f (x & x') == f x & f x'
-\end{code}
-For example, taking the length of a list is, in the |Normal| representation,
-trivially a homomorphism.
-%format fstHom = "\F{fstHom}"
-\begin{code}
-fstHom : forall {X} -> MonoidHom {<! ListN !>N X}{Nat} fst
-fstHom = record { respNeut = refl; resp& = \ _ _ -> refl }
-\end{code}
-
-
-Moving along to functorial structures, let us explore laws about
-the transformation of \emph{functions}. Equations at higher order mean
-trouble ahead!
-
-%format EndoFunctorOK = "\D{EndoFunctorOK}"
-%format endoFunctorId = "\F{endoFunctorId}"
-%format endoFunctorCo = "\F{endoFunctorCo}"
-\begin{code}
-record EndoFunctorOK F {{FF : EndoFunctor F}} : Set1 where
-  field
-    endoFunctorId  : forall {X} ->
-      map {{FF}}{X} id == id
-    endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
-      map {{FF}} f o map g == map (f o g)
-\end{code}
-
-However, when we try to show,
-%format vecEndoFunctorOK = "\F{vecEndoFunctorOK}"
-\begin{spec}
-vecEndoFunctorOK : forall {n} -> EndoFunctorOK \ X -> Vec X n
-vecEndoFunctorOK = record
-  {  endoFunctorId  = (HOLE GAP 0)
-  ;  endoFunctorCo  = \ f g -> (HOLE GAP 1)
-  }
-\end{spec}
-we see concrete goals (up to some tidying):
-\begin{spec}
-  ?0  :  vapp (vec id) == id
-  ?1  :  vapp (vec f) o vapp (vec g) == vapp (vec (f o g))
-\end{spec}
-
-This is a fool's errand. The pattern matching definition of |vapp|
-will not allow these equations on functions to hold at the level of
-|jeq|. We could make them a little more concrete by doing induction on
-|n|, but we will still not force enough computation. Our |==| cannot
-be extensional\nudge{Some see this as reason enough to abandon
-decidability of |jeq|, thence of typechecking.} for functions because
-it has canonical proofs for nothing more than |jeq|, and |jeq| cannot
-incorporate extensionality and remain decidable.
-
-We can define \emph{pointwise} equality,
-%format =1= = "\F{\doteq}"
-%format _=1=_ = "\us{" =1= "}"
-\begin{code}
-_=1=_ :  forall {l}{S : Set l}{T : S -> Set l}
-         (f g : (x : S) -> T x) -> Set l
-f =1= g = forall x -> f x == g x
-infix 1 _=1=_
-\end{code}
-which is reflexive but not substitutive.
-
-Now we can at least require:
-%format EndoFunctorOKP = "\D{EndoFunctorOKP}"
-\begin{code}
-record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
-  field
-    endoFunctorId  : forall {X} ->
-      map {{FF}}{X} id =1= id
-    endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
-      map {{FF}} f o map g =1= map (f o g)
-\end{code}
-
-%format vecEndoFunctorOKP = "\F{vecEndoFunctorOKP}"
-%format mapId = "\F{mapId}"
-%format mapCo = "\F{mapCo}"
-\begin{exe}[|Vec| functor laws]
-Show that vectors are functorial.
-\begin{spec}
-vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
-vecEndoFunctorOKP = ?
-\end{spec}
-%if False
-\begin{code}
-vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
-vecEndoFunctorOKP = record
-  {  endoFunctorId  = mapId
-  ;  endoFunctorCo  = mapCo
-  }  where
-  mapId : forall {n X}(xs : Vec X n) -> vapp (vec id) xs == xs
-  mapId <>                          = refl
-  mapId (x , xs)  rewrite mapId xs  = refl
-  mapCo :  forall {n R S T} (f : S -> T) (g : R -> S) (xs : Vec R n) →
-           vapp (vec f) (vapp (vec g) xs) == vapp (vec (f o g)) xs
-  mapCo f g <>                              = refl
-  mapCo f g (x , xs)  rewrite mapCo f g xs  = refl
-\end{code}
-%endif
-\end{exe}
-
-
-\section{Laws for |Applicative| and |Traversable|}
-
-Developing the laws for |Applicative| and |Traversable| requires more
-substantial chains of equational reasoning. Here are some operators
-which serve that purpose, inspired by work from Lennart Augustsson and
-Shin-Cheng Mu.
-
-%format =!! = "\F{=\!\!\![}"
-%format >> = "\F{\rangle}"
-%format _=!!_>>_ = "\_" =!! "\_" >> "\!\_"
-%format !!= = "\F{]\!\!\!=}"
-%format << = "\F{\langle}"
-%format _<<_!!=_ = "\_\!" << "\_" !!= "\_"
-%format <QED> = "\F{\square}"
-%format _<QED> = "\_" <QED>
-\begin{code}
-_=!!_>>_ : forall {l}{X : Set l}(x : X){y z} -> x == y -> y == z -> x == z
-_ =!! refl >> q = q
-
-_<<_!!=_ : forall {l}{X : Set l}(x : X){y z} -> y == x -> y == z -> x == z
-_ << refl !!= q = q
-
-_<QED> : forall {l}{X : Set l}(x : X) -> x == x
-x <QED> = refl
-
-infixr 1 _=!!_>>_ _<<_!!=_ _<QED>
-\end{code}
-
-These three build right-nested chains of equations. Each requires an explicit
-statement of where to start. The first two step along an equation used
-left-to-right or right-to-left, respectively, then continue the chain. Then,
-|x <QED>| marks the end of the chain.
-
-Meanwhile, we may need to rewrite in a context whilst building these proofs.
-In the expression syntax, we have nothing like |rewrite|.
-%format cong = "\F{cong}"
-\begin{code}
-cong : forall {k l}{X : Set k}{Y : Set l}(f : X -> Y){x y} -> x == y -> f x == f y
-cong f refl = refl
-\end{code}
-
-Thus armed, let us specify what makes an |Applicative| acceptable, then
-show that such a thing is certainly a |Functor|.
-\nudge{I had to $\eta$-expand |o| in lieu of subtyping.}
-%format ApplicativeOKP = "\D{ApplicativeOKP}"
-%format lawId = "\F{lawId}"
-%format lawCo = "\F{lawCo}"
-%format lawHom = "\F{lawHom}"
-%format lawCom = "\F{lawCom}"
-%format applicativeEndoFunctorOKP = "\F{applicativeEndoFunctorOKP}"
-\begin{code}
-record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
-  field
-    lawId :   forall {X}(x : F X) ->
-      pure {{AF}} id <*> x == x
-    lawCo :   forall {R S T}(f : F (S -> T))(g : F (R -> S))(r : F R) ->
-      pure {{AF}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
-    lawHom :  forall {S T}(f : S -> T)(s : S) ->
-      pure {{AF}} f <*> pure s == pure (f s)
-    lawCom :  forall {S T}(f : F (S -> T))(s : S) ->
-      f <*> pure s == pure {{AF}} (\ f -> f s) <*> f
-  applicativeEndoFunctorOKP : EndoFunctorOKP F {{applicativeEndoFunctor}}
-  applicativeEndoFunctorOKP = record
-    {  endoFunctorId = lawId
-    ;  endoFunctorCo = \ f g r ->
-         pure {{AF}} f <*> (pure {{AF}} g <*> r)
-           << lawCo (pure f) (pure g) r !!=
-         pure {{AF}} (\ f g -> f o g) <*> pure f <*> pure g <*> r
-           =!! cong (\ x -> x <*> pure g <*> r) (lawHom (\ f g -> f o g) f) >>
-         pure {{AF}} (_o_ f) <*> pure g <*> r 
-           =!! cong (\ x -> x <*> r) (lawHom (_o_ f) g) >>
-         pure {{AF}} (f o g) <*> r
-           <QED>
-    }
-\end{code}
-
-\begin{exe}[|ApplicativeOKP| for |Vec|]
-%format vecApplicativeOKP = "\F{vecApplicativeOKP}"
-Check that vectors are properly applicative. You can get away with
-|rewrite| for these proofs, but you might like to try the new tools.
-%format vecApplicativeOKP = "\F{vecApplicativeOKP}"
-\begin{spec}
-vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
-vecApplicativeOKP = ?
-\end{spec}
-%if False
-\begin{code}
-vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
-vecApplicativeOKP = record
-  {  lawId   = appId
-  ;  lawCo   = appCo
-  ;  lawHom  = appHom
-  ;  lawCom  = appCom
-  }  where
-  appId : forall {n X}(xs : Vec X n) -> vapp (vec id) xs == xs
-  appId <>                          = refl
-  appId (x , xs)  rewrite appId xs  = refl
-  appCo :  forall {n R S T}
-           (f : Vec (S -> T) n) (g : Vec (R -> S) n)(xs : Vec R n) ->
-           vapp (vapp (vapp (vec (\ f g -> f o g)) f) g) xs == vapp f (vapp g xs)
-  appCo <>        <>        <>                                = refl
-  appCo (f , fs)  (g , gs)  (x , xs)  rewrite appCo fs gs xs  = refl
-  appHom :  forall {n S T} (f : S -> T) (s : S) →
-            vapp {n} (vec f) (vec s) == vec (f s)
-  appHom {zero}   f s                         = refl
-  appHom {suc n}  f s rewrite appHom {n} f s  = refl
-  appCom :  forall {n S T} (f : Vec (S -> T) n) (s : S) ->
-            vapp f (vec s) == vapp (vec (\ f → f s)) f
-  appCom <> s = refl
-  appCom (f , fs) s rewrite appCom fs s = refl
-\end{code}
-%endif
-\end{exe}
-
-Given that |traverse| is parametric in an |Applicative|, we should expect to
-observe the corresponding naturality. We thus need a notion of
-\emph{applicative homomorphism}, being a natural transformation which respects
-|pure| and |<*>|. That is,
-%format -:> = "\F{\dot{\to}}"
-%format _-:>_ = "\us{" -:> "}"
-%format AppHom = "\D{AppHom}"
-%format respPure = "\F{resp}" pure
-%format respApp = "\F{resp}" <*>
-\begin{code}
-_-:>_ : forall (F G : Set -> Set) -> Set1
-F -:> G = forall {X} -> F X -> G X
-
-record AppHom  {F}{{AF : Applicative F}}{G}{{AG : Applicative G}}
-               (k : F -:> G) : Set1 where
-  field
-    respPure  : forall {X}(x : X) -> k (pure x) == pure x
-    respApp   : forall {S T}(f : F (S -> T))(s : F S) -> k (f <*> s) == k f <*> k s
-\end{code}
-
-We may readily check that monoid homomorphisms lift to applicative homomorphisms.
-%format monoidApplicativeHom = "\F{monoidApplicativeHom}"
-%format MonoidHom.respNeut = MonoidHom . respNeut
-%format MonoidHom.resp& = MonoidHom . resp&
-\begin{code}
-monoidApplicativeHom :
-  forall {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}
-  (f : X -> Y){{hf : MonoidHom f}} ->
-  AppHom {{monoidApplicative {{MX}}}} {{monoidApplicative {{MY}}}} f
-monoidApplicativeHom f {{hf}} = record
-  {  respPure  = \ x -> MonoidHom.respNeut hf
-  ;  respApp   = MonoidHom.resp& hf
-  }
-\end{code}
-
-Laws for |Traversable| functors are given thus:
-%format TraversableOKP = "\D{TraversableOKP}"
-\begin{code}
-record TraversableOKP F {{TF : Traversable F}} : Set1 where
-  field
-    lawId   :  forall  {X}(xs : F X) -> traverse id xs == xs
-    lawCo   :  forall  {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
-                       {R S T}(g : S -> G T)(h : R -> H S)(rs : F R) ->
-               let  EH : EndoFunctor H ; EH = applicativeEndoFunctor
-               in   map{H} (traverse g) (traverse h rs)
-                      ==
-                    traverse{{TF}}{{applicativeComp AH AG}} (map{H} g o h) rs
-    lawHom  :  forall {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
-                      (h : G -:> H){S T}(g : S -> G T) -> AppHom h ->
-                      (ss : F S) ->
-                      traverse (h o g) ss == h (traverse g ss)
-\end{code}
-
-Let us now check the coherence property we needed earlier.
-%format lengthContentsSizeShape = "\F{lengthContentsSizeShape}"
-%format TraversableOKP.lawHom = TraversableOKP . lawHom
-%format TraversableOKP.lawCo = TraversableOKP . lawCo
-\begin{code}
-lengthContentsSizeShape :
-  forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
-  forall  {X} (fx : F X) ->
-  fst (contentsT fx) == sizeT (shapeT fx)
-lengthContentsSizeShape tokF fx =
-  fst (contentsT fx)
-    <<  TraversableOKP.lawHom tokF {{monoidApplicative}} {{monoidApplicative}}
-          fst one (monoidApplicativeHom fst) fx !!=
-  sizeT fx
-    <<  TraversableOKP.lawCo tokF {{monoidApplicative}}{{applicativeId}}
-          (\ _ -> 1) (\ _ -> <>) fx !!=
-  sizeT (shapeT fx) <QED>
-\end{code}
-
-We may now construct
-\begin{code}
-toNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
-            forall {X} -> F X -> <! normalT F !>N X
-toNormal tokf fx
-  =  shapeT fx
-  ,  subst (lengthContentsSizeShape tokf fx) (Vec _) (snd (contentsT fx))
-\end{code}
-
-
-%format fromNormal = "\F{fromNormal}"
-%format Batch = "\F{Batch}"
-\begin{exe}
-Define |fromNormal|, reversing the direction of |toNormal|. One way to
-do it is to define what it means to be able to build something from a
-batch of contents.
-\begin{code}
-Batch : Set -> Set -> Set
-Batch X Y = Sg Nat \ n -> Vec X n -> Y
-\end{code}
-Show |Batch X| is applicative. You can then use |traverse| on a shape
-to build a |Batch| job which reinserts the contents. As above, you will
-need to prove a coherence property to show that the contents vector in
-your hand has the required length. Warning: you may encounter a consequence
-of defining |sizeT| via |crush| with ignored target type |One|, and
-need to prove that you get the same answer if you ignore something else.
-Agda's `Toggle display of hidden arguments' menu option may help you detect
-that scenario.
-%if False
-\begin{code}
-chop : forall {X} m {n} -> Vec X (m +Nat n) -> Vec X m * Vec X n
-chop zero xs = <> , xs
-chop (suc m) (x , xs) with chop m xs
-... | ys , zs = (x , ys) , zs
-
-batchApplicative : {X : Set} -> Applicative (Batch X)
-batchApplicative {X} = record
-  {  pure   =  \ y -> zero , \ _ -> y
-  ;  _<*>_  =  ^ \ m f -> ^ \ n g ->
-       m +Nat n , \ xs -> let yszs = chop m xs in f (fst yszs) (g (snd yszs))
-  }
-
-fstHom' : forall {X} -> AppHom {{batchApplicative{X}}}{{monoidApplicative}} fst
-fstHom' = record
-  {  respPure  = \ _ -> refl
-  ;  respApp   = \ _ _ -> refl
-  }
-
-eno : forall {X} -> Vec X 1 -> X
-eno (x , <>) = x
-
-stnetnocT :  forall {X F}{{TF : Traversable F}} -> F One -> Batch X (F X)
-stnetnocT {X}{{TF}} s = traverse {{TF}}{{batchApplicative{X}}} (\ _ -> 1 , eno) s
-
-lengthStnetnocSizeShape :
-  forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
-  forall  (s : F One){X} ->
-  fst (stnetnocT{X} s) == sizeT s
-lengthStnetnocSizeShape tokF s {X} =
-  fst (stnetnocT{X} s)
-    <<  TraversableOKP.lawHom tokF {{batchApplicative}}{{monoidApplicative}}
-          fst (\ _ -> 1 , eno) fstHom' s !!=
-  traverse {T = X} {{monoidApplicative}} (\ _ -> 1) s
-    =!! TraversableOKP.lawCo tokF {{applicativeId}}{{monoidApplicative}}{S = X}
-         (\ _ -> <>) (\ _ -> 1) s >>
-  sizeT s <QED>
-
-fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
-              forall {X} -> <! normalT F !>N X -> F X
-fromNormal tokf {X}(s , xs) with stnetnocT {X} s | lengthStnetnocSizeShape tokf s {X}
-fromNormal {{TF}} tokf (s , xs) | ._ , c | refl = c xs
-\end{code}
-%endif
-\end{exe}
-
-Showing that |toNormal| and |fromNormal| are mutually inverse looks
-like a tall order, given that the programs have been glued together
-with coherence conditions. At time of writing, it remains undone.
-When I see a mess like that, I wonder whether replacing indexing by
-the measure of size might help.
-
-
-\section{Fixpoints of Normal Functors}
-
-%format Tree = "\D{Tree}"
-%format <$ = "\C{\langle}"
-%format $> = "\C{\rangle}"
-%format <$_$> = <$ _ $>
-\begin{code}
-data Tree (N : Normal) : Set where
-  <$_$> : <! N !>N (Tree N) -> Tree N
-\end{code}
+%include Normal.lagda
+%include Proving.lagda
+%include NormT.lagda
+%include NormF.lagda

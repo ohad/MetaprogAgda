@@ -1,6 +1,8 @@
 default : notes.pdf
 
-notes.tex : notes.lagda Vec.lagda
+Vec.lagda : Normal.lagda Proving.lagda NormT.lagda NormF.lagda
+
+notes.tex : notes.lagda Vec.lagda STLC.lagda Containers.lagda IxCon.lagda
 	lhs2TeX --agda notes.lagda > notes.tex
 
 notes.aux : notes.tex
