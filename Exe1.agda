@@ -116,9 +116,9 @@ open Monad {{...}} public
 
 mult : {n : Nat} -> {X : Set} -> Vec (Vec X n) n -> Vec X n
 mult {zero} vss = <>
-mult {suc n} ((x , v) , vs) = x , mult (map drop  vs) where
-  drop : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
-  drop (x , xs) = xs
+mult {suc n} ((x , v) , vs) = x , mult (map tail  vs) where
+  tail : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
+  tail (x , xs) = xs
 
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
 monadVec = record { return  = vec; _>>=_ = λ vs f → mult (map f vs)}
@@ -286,10 +286,10 @@ _oN_ : Normal -> Normal -> Normal
 F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
 
 sizeT : forall {F}{{TF : Traversable F}}{X} -> F X -> Nat
-sizeT = crush (\ _ -> 1)
+sizeT {{TF}} = crush {{TF}} (\ _ -> 1)
 
 normalT : forall F {{TF : Traversable F}} -> Normal
-normalT F = F One / sizeT
+normalT F {{TF}} = F One / sizeT {{TF}}
 
 --shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
 --shapeT = traverse (\ _ -> <>)
@@ -342,10 +342,48 @@ flatten : {m n : Nat} {X : Set} -> Vec (Vec X n) m -> Vec X (m *Nat n)
 flatten {zero} <> = <>
 flatten {suc m} (v , M) = v ++ flatten M
 
+matrixMap : {m n : Nat} {X Y : Set} -> (X -> Y) -> Vec (Vec X n) m -> Vec (Vec Y n) m
+matrixMap f = map (map f)
+
+shiftRev : {m n : Nat} -> (i : Fin m) -> Fin (m +Nat n)
+shiftRev zero = zero
+shiftRev (suc i) = suc (shiftRev i)
+
+shiftTimes : {m n : Nat} -> (i : Fin n) -> Fin ((suc m) *Nat n)
+shiftTimes zero = zero
+shiftTimes {zero} {suc n} (suc i) = suc (shiftRev i)
+shiftTimes {suc m} {suc n} (suc i) = nudge (shift {n} {suc (n +Nat (m *Nat suc n))} (nudge (shiftRev i)))  
+
+slip : {m n : Nat} -> (i : Fin n) -> Fin (m +Nat n)
+slip {zero} i = i
+slip {suc m} i = suc (slip {m} i)
+
+
+encode : {m n : Nat} -> Fin m -> Fin n -> Fin (m *Nat n)
+encode zero j = shiftRev j
+encode {suc m} {n} (suc i) j = slip {n} (encode i j)
+
+
 swap : (F G : Normal) -> (F >< G) -N> (G >< F)
-swap F G (sF , sG) = (sG , sF) , {!!} where
-  foo : {!!}
+swap F G (sF , sG) = (sG , sF) , flatten bar where
+  m   : Nat
+  m   = size F sF
+  n   : Nat
+  n   = size G sG
+  foo : Vec (Vec (Fin m * Fin n) n) m
   foo = kroenecker (upto (size F sF)) (upto (size G sG))
+  bar : Vec (Vec (Fin (m *Nat n)) m) n
+  bar = matrixMap (vv encode) (transpose foo)
+------- Finished this!
+
+evenVec = VecN 2
+oddVec  = VecN 5
+
+morph = swap evenVec oddVec
+
+exp = (transpose (kroenecker (upto 2) (upto 5))) --(snd (morph (<> , <>)))
+
+expi = matrixMap (forgetFin o (vv encode)) exp 
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
 drop F G x = {!!}
