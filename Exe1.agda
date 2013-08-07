@@ -32,19 +32,22 @@ data Vec (X : Set) : Nat -> Set where
   _,_  : {n : Nat} -> X -> Vec X n ->  Vec X (suc n)
 
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 ss ts = {!!}
+zip1 <> <> = <>
+zip1 (s , ss) (t , ts) = (s , t) , zip1 ss ts
 
 vec : forall {n X} -> X -> Vec X n
-vec {n} x = {!!}
+vec {zero} x = <>
+vec {suc n} x = x , vec x
 
 vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
-vapp fs ss = {!!}
+vapp <> <> = <>
+vapp (f , fs) (s , ss) = (f s) , vapp fs ss
 
 vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
-vmap f ss = {!!}
+vmap f ss = vapp (vec f) ss
 
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip2 ss ts = {!!}
+zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 
 
 --[Finite sets and projection from vectors]
@@ -53,11 +56,25 @@ data Fin : Nat -> Set where
   zero : {n : Nat} -> Fin (suc n)
   suc  : {n : Nat} -> Fin n -> Fin (suc n)
 
+forgetFin : {n : Nat} -> Fin n -> Nat
+forgetFin zero = 0
+forgetFin (suc n) = suc (forgetFin n)
+
 proj : forall {n X} -> Vec X n -> Fin n -> X
-proj xs i = {!!}
+proj (x , xs) zero = x
+proj (x , xs) (suc i) = proj xs i
+
+-- Some useful helper functions
+nudge : {n : Nat} -> Fin n -> Fin (suc n)
+nudge zero = suc zero
+nudge (suc i) = suc (nudge i)
+
+upto : (n : Nat) -> Vec (Fin n) n
+upto zero = <>
+upto (suc n₁) = zero , vmap nudge (upto n₁)
 
 tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
-tabulate {n} f = {!!}
+tabulate {n} f = vmap f (upto n) 
 
 -- Functors and Applicatives
 
@@ -96,14 +113,27 @@ record Monad (F : Set -> Set) : Set1 where
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
 open Monad {{...}} public
 
+
+mult : {n : Nat} -> {X : Set} -> Vec (Vec X n) n -> Vec X n
+mult {zero} vss = <>
+mult {suc n} ((x , v) , vs) = x , mult (map drop  vs) where
+  drop : {n : Nat} -> {X : Set} -> Vec X (suc n) -> Vec X n
+  drop (x , xs) = xs
+
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
-monadVec = {!!}
+monadVec = record { return  = vec; _>>=_ = λ vs f → mult (map f vs)}
 
 applicativeId : Applicative id
-applicativeId = {!!}
+applicativeId = record { pure = id; 
+                         _<*>_ = id }
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
-applicativeComp aF aG = {!!}
+applicativeComp {F} {G} aF aG = 
+  record {   
+           pure  = pure {{aF}} o pure ;  
+           _<*>_  = _<*>_ {{aF}} o 
+                         map {{applicativeEndoFunctor {{aF}}}} _<*>_ 
+  }
 
 record Monoid (X : Set) : Set where
   infixr 4 _&_
@@ -111,11 +141,23 @@ record Monoid (X : Set) : Set where
     neut  : X
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
-  monoidApplicative = {!!}
+  monoidApplicative = 
+    record { 
+      pure = λ _ → neut; 
+      _<*>_ = λ x y → x & y 
+    }
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 
 --Show by construction that the pointwise product of |Applicative|s is
 -- |Applicative|.
+
+ptwsApplicative : forall { F G } -> Applicative F -> Applicative G 
+                    -> Applicative (\ X -> (F X) * (G X))
+ptwsApplicative aF aG = 
+  record { 
+    pure = λ x → (pure x) , (pure x);
+    _<*>_ = vv (λ fF gG → vv (λ sF sG → (fF <*> sF) , (gG <*> sG)))
+  }
 
 record Traversable (F : Set -> Set) : Set1 where
   field
@@ -133,7 +175,7 @@ traversableVec = record { traverse = vtr } where
   vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
 
 transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
-transpose = {!!}
+transpose = traverse id
 
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
@@ -144,14 +186,26 @@ crush {{M = M}} =
 {-Show that |Traversable| is closed under identity and composition.
 What other structure does it preserve?-}
 
---\section{Arithmetic}
+idTraverse : Traversable id
+idTraverse = record { traverse = id }
 
+compTraverse : forall {F G} -> Traversable F -> Traversable G 
+                 -> Traversable (F o G)
+compTraverse tF tG = 
+  record { 
+    traverse = λ h s → traverse {{tF}} (traverse {{tG}} h) s
+  }
+
+-- Todo: Finish on a by-need basis?
+
+--\section{Arithmetic}
 _+Nat_ : Nat -> Nat -> Nat
-x +Nat y = {!!}
+zero +Nat y  = y
+suc x +Nat y = suc (x +Nat y)
 
 _*Nat_ : Nat -> Nat -> Nat
-x *Nat y = {!!}
-
+zero *Nat y = zero
+suc x *Nat y = y +Nat (x *Nat y)
 
 --\section{Normal Functors}
 
@@ -172,11 +226,11 @@ ListN : Normal
 ListN = Nat / id
 
 
-KN : Set -> Normal
-KN A = {!!}
+K : Set -> Normal
+K A = A / (λ a → zero)
 
-IN : Normal
-IN = {!!}
+I : Normal
+I = One / (λ _ → 1)
 
 _+N_ : Normal -> Normal -> Normal
 (ShF / szF) +N (ShG / szG) = (ShF + ShG) / vv szF <?> szG
@@ -200,13 +254,26 @@ nOut F G xs' with nCase F G xs'
 nOut F G .(nInj F G xs) | from xs = xs
 
 _++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
-xs ++ ys = {!!}
+<> ++ ys = ys
+(x , xs) ++ ys = x , (xs ++ ys)
 
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G fxgx = {!!}
+nPair F G ((sF , vF) , (sG , vG)) = (sF , sG) , (vF ++ vG )
+
+concatSurjectivity : forall {m n : Nat} {X} -> (x : Vec X (m +Nat n)) -> (vv \ (u : Vec X m) (v : Vec X n) -> u ++ v)  ^-1 x
+concatSurjectivity {zero} v = from (<> , v)
+concatSurjectivity {suc m} (x , v) with concatSurjectivity {m} v
+concatSurjectivity {suc m} (x , .(u ++ w)) | from (u , w) = from ((x , u) , w)
+
+nProj : forall { X } F G (s : <! F *N G !>N X) -> (nPair F G) ^-1 s
+nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG 
+nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w)) 
+
+monmult : forall {X} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
+monmult (n , xs) (m , ys) = (n +Nat m) , (xs ++ ys)
 
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = {!!}
+listNMonoid = λ {X} → record { neut = zero , <>; _&_ = monmult }
 
 sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
@@ -224,8 +291,8 @@ sizeT = crush (\ _ -> 1)
 normalT : forall F {{TF : Traversable F}} -> Normal
 normalT F = F One / sizeT
 
-shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
-shapeT = traverse (\ _ -> <>)
+--shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
+--shapeT = traverse (\ _ -> <>)
 
 one : forall {X} -> X -> <! ListN !>N X
 one x = 1 , (x , <>)
@@ -246,14 +313,39 @@ nMorph f (s , xs)  with f s
 --transformation.
 
 morphN : forall {F G} -> (forall {X} -> <! F !>N X -> <! G !>N X) -> F -N> G
-morphN f s = {!!}
+morphN {F} f s = f (s , upto (size F s))
 
 --[Hancock's tensor]
 _><_ : Normal -> Normal -> Normal
 (ShF / szF) >< (ShG / szG) = (ShF * ShG) / vv \ f g -> szF f *Nat szG g
 
+-- Bounded arithmetic
+
+shift : {n m : Nat} -> (i : Fin m) -> Fin (n +Nat m)
+shift {zero} i = i
+shift {suc n} i = suc (shift {n} i)
+
+_+Fin_ : {m n : Nat} -> (i : Fin m) -> (j : Fin n) -> Fin (m +Nat n)
+_+Fin_ {suc m} {n} zero  j = shift {suc m} {n} j
+suc i +Fin j = suc (i +Fin j)
+
+_*Fin_ : {m n : Nat} -> (i : Fin m) -> (j : Fin n) -> Fin (m *Nat n)
+_*Fin_ {suc m} {zero} zero ()
+_*Fin_ {suc m} {suc n} zero j = zero
+suc i *Fin j = j +Fin (i *Fin j)
+
+kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n 
+               -> Vec (Vec (X * Y) n) m
+kroenecker xs ys = vmap (λ x → vmap (λ y → x , y) ys) xs
+
+flatten : {m n : Nat} {X : Set} -> Vec (Vec X n) m -> Vec X (m *Nat n)
+flatten {zero} <> = <>
+flatten {suc m} (v , M) = v ++ flatten M
+
 swap : (F G : Normal) -> (F >< G) -N> (G >< F)
-swap F G x = {!!}
+swap F G (sF , sG) = (sG , sF) , {!!} where
+  foo : {!!}
+  foo = kroenecker (upto (size F sF)) (upto (size G sG))
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
 drop F G x = {!!}
@@ -262,13 +354,14 @@ drop F G x = {!!}
 --\section{Proving Equations}
 
 
+
 record MonoidOK X {{M : Monoid X}} : Set where
   field
     absorbL  : (x : X) ->      neut & x == x
     absorbR  : (x : X) ->      x & neut == x
     assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
 
-{- Do this after you've defined +Nat
+
 natMonoidOK : MonoidOK Nat
 natMonoidOK = record
   {  absorbL  = \ _ -> refl
@@ -283,9 +376,70 @@ natMonoidOK = record
   assoc+ zero     y z                       = refl
   assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
 
+
+_++L_ : forall {X } -> List X -> List X -> List X
+<> ++L ys = ys
+(x , xs) ++L ys = x , (xs ++L ys)
+
+listMonoid : {X : Set} -> Monoid (List X)
+listMonoid {X} = record { neut = <>; _&_ = _++L_ }
+
+listMonoidOK : {X : Set} -> MonoidOK (List X)
+listMonoidOK {X} = record 
+  { 
+    absorbL = λ _ → refl; 
+    absorbR = _++L<>; 
+    assoc = {!assoc++L!} 
+  } where
+    _++L<> : forall xs -> xs ++L <> == xs
+    <> ++L<> = refl
+    (x , xs) ++L<> rewrite xs ++L<> = refl
+
+    lemma : forall xs ys y -> xs ++L (y , ys) == (xs ++L (y , <>)) ++L ys
+    lemma <> ys y = refl
+    lemma (x , xs) ys y rewrite lemma xs ys y = refl
+
+    assoc++L : forall xs ys zs -> (xs ++L ys) ++L zs == xs ++L (ys ++L zs)
+    assoc++L xs <> zs rewrite xs ++L<> = refl
+    assoc++L xs (y , ys) zs rewrite lemma xs ys y 
+                            |       assoc++L (xs ++L (y , <>)) ys zs 
+                            |       lemma xs (ys ++L zs) y = refl
+
+<>N : {X : Set} -> <! ListN !>N X
+<>N = λ {X} → zero , <>
+
+_++N_ : {X : Set} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
+(zero , <>) ++N (n , ys) = n , ys
+(suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys) 
+(suc m , (x , xs)) ++N (n , ys) | k , r  = suc k , (x , r)
+
+concatLength : forall {X : Set} m (xs : Vec X m) n (ys : Vec X n) -> ((m , xs) ++N (n , ys)) == ((m +Nat n) , (xs ++ ys))
+concatLength zero <> n ys = refl
+concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
+
+--_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> rewrite
+--MonoidOK.absorbR natMonoidOK n (xs ++ <> == xs) 
+--xs ++<> = ?
+
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
-listNMonoidOK {X} = {!!}
--}
+listNMonoidOK {X} = record 
+  { 
+    absorbL = λ x → refl; 
+    absorbR = {!_++N<>!}; 
+    assoc = {!!} 
+  } where
+    _++N<> : forall xs -> xs ++N <>N == xs
+    (zero , <>) ++N<> = refl
+    (suc m , (x , xs)) ++N<> rewrite concatLength m xs 0 <> 
+--                             rewrite MonoidOK.absorbR 
+                             with MonoidOK.absorbR natMonoidOK m
+    (suc m , (x , xs)) ++N<> | q = {!!}
+
+baz : (x : Nat) →
+        (record { neut = 0; _&_ = _+Nat_ } Monoid.& x)
+        (Monoid.neut (record { neut = 0; _&_ = _+Nat_ }))
+        == x
+baz = MonoidOK.absorbR natMonoidOK 
 
 {-
 \begin{exe}[a not inconsiderable problem]
@@ -445,3 +599,4 @@ Dec X = X + (X -> Zero)
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
 eq? N sheq? t t' = {!!}
+
