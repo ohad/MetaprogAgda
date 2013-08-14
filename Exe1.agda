@@ -375,15 +375,19 @@ swap F G (sF , sG) = (sG , sF) , flatten bar where
   bar : Vec (Vec (Fin (m *Nat n)) m) n
   bar = matrixMap (vv encode) (transpose foo)
 ------- Finished this!
+evenVec = VecN 3
+oddVec  = VecN 3
 
-evenVec = VecN 2
-oddVec  = VecN 5
+morph = swap evenVec oddVec (<> , <>)
 
-morph = swap evenVec oddVec
+r = fst morph
 
-exp = (transpose (kroenecker (upto 2) (upto 5))) --(snd (morph (<> , <>)))
+original = evenVec >< oddVec
 
-expi = matrixMap (forgetFin o (vv encode)) exp 
+exp = (transpose (kroenecker (upto 3) (upto 3))) --(snd (morph (<> , <>)))
+
+expi = map forgetFin (snd morph) 
+--expj = map forgetFin (snd (original ?))
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
 drop F G x = {!!}
