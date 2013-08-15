@@ -431,7 +431,7 @@ listMonoidOK {X} = record
   { 
     absorbL = λ _ → refl; 
     absorbR = _++L<>; 
-    assoc = {!assoc++L!} 
+    assoc = assoc++L 
   } where
     _++L<> : forall xs -> xs ++L <> == xs
     <> ++L<> = refl
@@ -459,24 +459,28 @@ concatLength : forall {X : Set} m (xs : Vec X m) n (ys : Vec X n) -> ((m , xs) +
 concatLength zero <> n ys = refl
 concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
 
---_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> rewrite
---MonoidOK.absorbR natMonoidOK n (xs ++ <> == xs) 
---xs ++<> = ?
+--_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> (xs ++ <> == xs) 
+--xs ++<> = {!!}
 
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = record 
   { 
     absorbL = λ x → refl; 
-    absorbR = {!_++N<>!}; 
+    absorbR = _++N<> ;
     assoc = {!!} 
   } where
-    _++N<> : forall xs -> xs ++N <>N == xs
-    (zero , <>) ++N<> = refl
-    (suc m , (x , xs)) ++N<> rewrite concatLength m xs 0 <> 
---                             rewrite MonoidOK.absorbR 
-                             with MonoidOK.absorbR natMonoidOK m
-    (suc m , (x , xs)) ++N<> | q = {!!}
+      foo : forall n -> n +Nat 0 == n
+      foo n = MonoidOK.absorbR natMonoidOK n
+      bar : {X Y : Set} -> (f : X -> Y) -> (x₁ x₂ : X) -> x₁ == x₂ -> f x₁ == f x₂
+      bar f x₁ x₂ p = subst p (λ x → f x₁ == f x) refl
+      _++N<> : (lst : <! ListN !>N X) -> (fst lst +Nat 0) , (snd lst ++ <>) == lst
+      (n , xs) ++N<> = subst {!!} (vv λ m ys -> m , ys == n , xs) refl
 
+{- 
+  subst {s = n} {t = n +Nat 0} {!!} 
+                           (λ m → {!m!} , (xs ++ <>) == n , xs) 
+                           (subst {s = xs ++ <>} {t = xs} {!!} {!!} {!!})
+-}
 baz : (x : Nat) →
         (record { neut = 0; _&_ = _+Nat_ } Monoid.& x)
         (Monoid.neut (record { neut = 0; _&_ = _+Nat_ }))
