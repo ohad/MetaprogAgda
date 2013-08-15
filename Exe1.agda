@@ -167,12 +167,13 @@ record Traversable (F : Set -> Set) : Set1 where
   traversableEndoFunctor = record { map = traverse }
 open Traversable {{...}} public
 
+vtr :  forall {n G S T}{{_ : Applicative G}} ->
+              (S -> G T) -> Vec S n -> G (Vec T n)
+vtr {{aG}} f <>        = pure {{aG}} <>
+vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
+
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
-traversableVec = record { traverse = vtr } where
-  vtr :  forall {n G S T}{{_ : Applicative G}} ->
-         (S -> G T) -> Vec S n -> G (Vec T n)
-  vtr {{aG}} f <>        = pure {{aG}} <>
-  vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
+traversableVec = record { traverse = vtr } 
 
 transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
 transpose = traverse id
@@ -334,17 +335,6 @@ _*Fin_ {suc m} {zero} zero ()
 _*Fin_ {suc m} {suc n} zero j = zero
 suc i *Fin j = j +Fin (i *Fin j)
 
-kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n 
-               -> Vec (Vec (X * Y) n) m
-kroenecker xs ys = vmap (λ x → vmap (λ y → x , y) ys) xs
-
-flatten : {m n : Nat} {X : Set} -> Vec (Vec X n) m -> Vec X (m *Nat n)
-flatten {zero} <> = <>
-flatten {suc m} (v , M) = v ++ flatten M
-
-matrixMap : {m n : Nat} {X Y : Set} -> (X -> Y) -> Vec (Vec X n) m -> Vec (Vec Y n) m
-matrixMap f = map (map f)
-
 shiftRev : {m n : Nat} -> (i : Fin m) -> Fin (m +Nat n)
 shiftRev zero = zero
 shiftRev (suc i) = suc (shiftRev i)
@@ -358,39 +348,58 @@ slip : {m n : Nat} -> (i : Fin n) -> Fin (m +Nat n)
 slip {zero} i = i
 slip {suc m} i = suc (slip {m} i)
 
+-- Some matrix operations
 
+kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n 
+               -> Vec (Vec (X * Y) n) m
+kroenecker xs ys = vmap (λ x → vmap (λ y → x , y) ys) xs
+
+flatten : {m n : Nat} {X : Set} -> Vec (Vec X n) m -> Vec X (m *Nat n)
+flatten {zero} <> = <>
+flatten {suc m} (v , M) = v ++ flatten M
+
+matrixMap : {m n : Nat} {X Y : Set} -> (X -> Y) -> Vec (Vec X n) m -> Vec (Vec Y n) m
+matrixMap f = map (map f)
+
+
+-- Encode pairs of bounded integers inside their bounded multiplication.
 encode : {m n : Nat} -> Fin m -> Fin n -> Fin (m *Nat n)
 encode zero j = shiftRev j
 encode {suc m} {n} (suc i) j = slip {n} (encode i j)
 
 
 swap : (F G : Normal) -> (F >< G) -N> (G >< F)
-swap F G (sF , sG) = (sG , sF) , flatten bar where
+swap F G (sF , sG) = (sG , sF) , flatten swappedIndexMatrix where
   m   : Nat
   m   = size F sF
   n   : Nat
   n   = size G sG
-  foo : Vec (Vec (Fin m * Fin n) n) m
-  foo = kroenecker (upto (size F sF)) (upto (size G sG))
-  bar : Vec (Vec (Fin (m *Nat n)) m) n
-  bar = matrixMap (vv encode) (transpose foo)
-------- Finished this!
-evenVec = VecN 3
-oddVec  = VecN 3
+  originalIndexMatrix : Vec (Vec (Fin m * Fin n) n) m
+  originalIndexMatrix = kroenecker (upto (size F sF)) (upto (size G sG))
+  swappedIndexMatrix : Vec (Vec (Fin (m *Nat n)) m) n
+  swappedIndexMatrix = matrixMap (vv encode) (transpose originalIndexMatrix)
 
-morph = swap evenVec oddVec (<> , <>)
 
-r = fst morph
 
-original = evenVec >< oddVec
-
-exp = (transpose (kroenecker (upto 3) (upto 3))) --(snd (morph (<> , <>)))
-
-expi = map forgetFin (snd morph) 
---expj = map forgetFin (snd (original ?))
+{----- Ask Conor why Agda can't figured out that in the first case
+ ----- size F sF == 0.
+drop : (F G : Normal) -> (F >< G) -N> (F oN G)
+drop F G (sF , sG) with (size F sF)
+drop F G (sF , sG) |    zero = (sF , {!!}) , {!!}
+drop F G (sF , sG) |    suc n = {!!}
+-}
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
-drop F G x = {!!}
+drop F G (sF , sG) = (sF , vec sG) , include {Shape G} {size G} {sG} (size F sF) where
+  include : forall {X} -> {f : X -> Nat } -> {x : X} -> (n : Nat) 
+                       -> Vec (Fin (n *Nat (f x))) 
+                                   (vtr {n} {\ _ -> Nat} {X} {One} 
+                                            {{monoidApplicative}} f (vec x))
+  include {X} {f} {x} zero  = <>
+  include {X} {f} {x} (suc n) = map shiftRev (upto (f x)) ++ map (shift {f x}) (include {X} {f} {x} n)
+
+---- SHEEEEEESH! That was hard!
+
 
 
 --\section{Proving Equations}
