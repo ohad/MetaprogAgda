@@ -471,6 +471,9 @@ concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
 --_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> (xs ++ <> == xs) 
 --xs ++<> = {!!}
 
+symmetry :  {X : Set} {s t : X} -> s == t -> t == s
+symmetry refl = refl
+
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = record 
   { 
@@ -483,8 +486,11 @@ listNMonoidOK {X} = record
       bar : {X Y : Set} -> (f : X -> Y) -> (x₁ x₂ : X) -> x₁ == x₂ -> f x₁ == f x₂
       bar f x₁ x₂ p = subst p (λ x → f x₁ == f x) refl
       _++N<> : (lst : <! ListN !>N X) -> (fst lst +Nat 0) , (snd lst ++ <>) == lst
-      (n , xs) ++N<> = subst {!!} (vv λ m ys -> m , ys == n , xs) refl
-
+      (.0 , <>) ++N<> = refl
+      (.(suc n) , _,_ {n} x xs) ++N<> = subst ((n , xs) ++N<>) 
+                                              (vv (λ m ys → {!!} , {!!} == (suc n) , (x , xs)))
+                                              {!!}
+--  rewrite subst (symmetry (foo n)) (λ m → Vec X m == Vec X n) refl 
 {- 
   subst {s = n} {t = n +Nat 0} {!!} 
                            (λ m → {!m!} , (xs ++ <>) == n , xs) 
