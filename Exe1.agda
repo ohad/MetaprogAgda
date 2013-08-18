@@ -478,18 +478,42 @@ listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = record 
   { 
     absorbL = λ x → refl; 
-    absorbR = _++N<> ;
-    assoc = {!!} 
+    absorbR = symmetry o (vv _,_++N<> );
+    assoc = vv (λ a b → vv (λ c d →  vv (λ e f → {!assoc++N a b c d e f!})))
   } where
       foo : forall n -> n +Nat 0 == n
       foo n = MonoidOK.absorbR natMonoidOK n
-      bar : {X Y : Set} -> (f : X -> Y) -> (x₁ x₂ : X) -> x₁ == x₂ -> f x₁ == f x₂
-      bar f x₁ x₂ p = subst p (λ x → f x₁ == f x) refl
-      _++N<> : (lst : <! ListN !>N X) -> (fst lst +Nat 0) , (snd lst ++ <>) == lst
-      (.0 , <>) ++N<> = refl
-      (.(suc n) , _,_ {n} x xs) ++N<> = subst ((n , xs) ++N<>) 
-                                              (vv (λ m ys → {!!} , {!!} == (suc n) , (x , xs)))
-                                              {!!}
+      _,_++N<> : (n : Nat) -> (xs : Vec X n) -> n , xs == (n +Nat 0) , (xs ++ <>)
+      zero , <> ++N<> = refl
+      suc n , x , xs ++N<> = subst (n , xs ++N<>) 
+                                   (vv (λ m ys → ((suc n , (x , xs)) == (suc m , ( x , ys)))))
+                                   (refl {X = <! ListN !>N X} )
+
+      lemma : (n : Nat) (xs : Vec X n)  (m : Nat) (ys : Vec X m) (y : X) -> (n +Nat (suc m)), xs ++ (y , ys) == (suc n) +Nat m , (xs ++ (y , <>)) ++ ys
+      lemma zero <> m ys y = refl {X = Sg Nat (λ n -> Vec X n)}
+      lemma (suc n) (x , xs) m ys y = subst (symmetry (lemma n xs m ys y)) 
+                                            (vv (λ p us → 
+                                              (suc p) +Nat m , (x , us) ++ ys 
+                                                   == 
+                                              ((suc (suc n) +Nat m) , ((x , xs) ++ (y , <>)) ++ ys) ))
+                                            (refl {X = Sg Nat (λ n -> Vec X n)} )
+
+
+      assoc++N : (l : Nat) (xs : Vec X l) (m : Nat) (ys : Vec X m) (n : Nat) (zs : Vec X n) -> (l +Nat m) +Nat n , (xs ++ ys) ++ zs == l +Nat (m +Nat n) , xs ++ (ys ++ zs)
+      assoc++N l xs zero <> n zs = subst (l , xs ++N<>) (vv (λ p us → p +Nat n , us ++ zs == l +Nat n , xs ++ zs)) (refl {X = Sg Nat (λ n -> Vec X n)} )
+      assoc++N l xs (suc m) (x , ys) n zs rewrite lemma l xs m ys x = {!!}
+
+
+  --subst {l = lzero} (n , xs ++N<>) 
+--                                            (vv (λ m ys → suc n , (x , xs) == suc m , ( x , ys))) --)) 
+--                                            refl
+                                            
+
+{- subst ((n , xs) ++N<>)
+                                              (vv (λ m ys → suc n , (x , xs) == suc m , (x , ys) ))
+-}
+
+
 --  rewrite subst (symmetry (foo n)) (λ m → Vec X m == Vec X n) refl 
 {- 
   subst {s = n} {t = n +Nat 0} {!!} 
