@@ -274,7 +274,7 @@ monmult : forall {X} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
 monmult (n , xs) (m , ys) = (n +Nat m) , (xs ++ ys)
 
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
-listNMonoid = λ {X} → record { neut = zero , <>; _&_ = monmult }
+listNMonoid = λ {X} → record { neut = (0 , <>); _&_ = monmult }
 
 sumMonoid : Monoid Nat
 sumMonoid = record { neut = 0; _&_ = _+Nat_ }
@@ -457,12 +457,18 @@ listMonoidOK {X} = record
                             |       lemma xs (ys ++L zs) y = refl
 
 <>N : {X : Set} -> <! ListN !>N X
-<>N = λ {X} → zero , <>
+<>N = λ {X} → Monoid.neut listNMonoid
+
+<_>N : {X : Set} -> (x : X) -> <! ListN !>N X
+< x >N = 1 , (x , <>)
 
 _++N_ : {X : Set} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
 (zero , <>) ++N (n , ys) = n , ys
 (suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys) 
 (suc m , (x , xs)) ++N (n , ys) | k , r  = suc k , (x , r)
+
+_+Commutativity_ : forall m n -> m +Nat n == n +Nat m
+m +Commutativity n = {!!}
 
 concatLength : forall {X : Set} m (xs : Vec X m) n (ys : Vec X n) -> ((m , xs) ++N (n , ys)) == ((m +Nat n) , (xs ++ ys))
 concatLength zero <> n ys = refl
@@ -474,57 +480,56 @@ concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
 symmetry :  {X : Set} {s t : X} -> s == t -> t == s
 symmetry refl = refl
 
+twoSubst : forall {k l k'} {X : Set k} {X' : X -> Set k'} {s t : X} {s' : X' s} {t' : X' t} ->
+           (p : s == t) -> (subst p X s' == t') -> (P : (u : X) -> X' u -> Set l) -> P s s' -> P t t'
+twoSubst refl refl P x = x
+
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = record 
   { 
-    absorbL = λ x → refl; 
-    absorbR = symmetry o (vv _,_++N<> );
-    assoc = vv (λ a b → vv (λ c d →  vv (λ e f → {!assoc++N a b c d e f!})))
-  } where
-      foo : forall n -> n +Nat 0 == n
-      foo n = MonoidOK.absorbR natMonoidOK n
-      _,_++N<> : (n : Nat) -> (xs : Vec X n) -> n , xs == (n +Nat 0) , (xs ++ <>)
-      zero , <> ++N<> = refl
-      suc n , x , xs ++N<> = subst (n , xs ++N<>) 
-                                   (vv (λ m ys → ((suc n , (x , xs)) == (suc m , ( x , ys)))))
-                                   (refl {X = <! ListN !>N X} )
+    absorbL = λ x → refl {X = <! ListN !>N X} ; 
+    absorbR = _++N<>;
+    assoc = assoc++N
+  } where  
+      forgetVec : forall {X n} -> Vec X n -> List X
+      forgetVec <> = <>
+      forgetVec (x , xs) = x , forgetVec xs
 
-      lemma : (n : Nat) (xs : Vec X n)  (m : Nat) (ys : Vec X m) (y : X) -> (n +Nat (suc m)), xs ++ (y , ys) == (suc n) +Nat m , (xs ++ (y , <>)) ++ ys
-      lemma zero <> m ys y = refl {X = Sg Nat (λ n -> Vec X n)}
-      lemma (suc n) (x , xs) m ys y = subst (symmetry (lemma n xs m ys y)) 
-                                            (vv (λ p us → 
-                                              (suc p) +Nat m , (x , us) ++ ys 
-                                                   == 
-                                              ((suc (suc n) +Nat m) , ((x , xs) ++ (y , <>)) ++ ys) ))
-                                            (refl {X = Sg Nat (λ n -> Vec X n)} )
+      _++N<> : (xs : <! ListN !>N X) -> xs & neut == xs
+      (zero , <>) ++N<> = refl
+      (suc n , (x , xs)) ++N<> rewrite (n , xs) ++N<> 
+        = twoSubst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
+                    (symmetry((n , xs) ++N<>))  
+                    (λ u u' → _==_ {X = <! ListN !>N X}
+                                (suc u , (x ,  {!snd u'!}))  (suc n , (x , xs)))
+                    (refl {X = <! ListN !>N X})
 
-
-      assoc++N : (l : Nat) (xs : Vec X l) (m : Nat) (ys : Vec X m) (n : Nat) (zs : Vec X n) -> (l +Nat m) +Nat n , (xs ++ ys) ++ zs == l +Nat (m +Nat n) , xs ++ (ys ++ zs)
-      assoc++N l xs zero <> n zs = subst (l , xs ++N<>) (vv (λ p us → p +Nat n , us ++ zs == l +Nat n , xs ++ zs)) (refl {X = Sg Nat (λ n -> Vec X n)} )
-      assoc++N l xs (suc m) (x , ys) n zs rewrite lemma l xs m ys x = {!!}
-
-
-  --subst {l = lzero} (n , xs ++N<>) 
---                                            (vv (λ m ys → suc n , (x , xs) == suc m , ( x , ys))) --)) 
---                                            refl
-                                            
-
-{- subst ((n , xs) ++N<>)
-                                              (vv (λ m ys → suc n , (x , xs) == suc m , (x , ys) ))
+{-      subst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
+                (λ m → suc m , (x , xs ++ <>) == suc n , (x , xs)) 
+                (subst (symmetry (MonoidOK.absorbR listMonoidOK (forgetVec xs)))
+                (λ ys → ((suc n , (x , ys)) == (suc n , (x , xs)))) (refl {X = <! ListN !>N X}))
 -}
 
+      lemma' : (xs ys : <! ListN !>N X) (y : X) -> xs ++N (< y >N ++N ys) == (xs ++N < y >N) ++N ys
+      lemma' (zero , <>) ys y = refl
+      lemma' (suc n , (x , xs)) ys y rewrite lemma' (n , xs) ys y = refl
 
---  rewrite subst (symmetry (foo n)) (λ m → Vec X m == Vec X n) refl 
-{- 
-  subst {s = n} {t = n +Nat 0} {!!} 
-                           (λ m → {!m!} , (xs ++ <>) == n , xs) 
-                           (subst {s = xs ++ <>} {t = xs} {!!} {!!} {!!})
--}
-baz : (x : Nat) →
-        (record { neut = 0; _&_ = _+Nat_ } Monoid.& x)
-        (Monoid.neut (record { neut = 0; _&_ = _+Nat_ }))
-        == x
-baz = MonoidOK.absorbR natMonoidOK 
+
+      componentwise : (xs ys : <! ListN !>N X) -> fst xs +Nat fst ys == fst (xs ++N ys)
+      componentwise xs ys = {!!}
+
+      p : (xs : <! ListN !>N X) -> xs ++N (0 , <>) == xs
+      p (n , xs) = {!!} 
+
+      assoc++N :  (xs ys zs : <! ListN !>N X) -> (xs & ys) & zs == xs & (ys & zs)
+      assoc++N (n , xs) (zero , <>) zs rewrite p (n , xs) 
+        --                               |       MonoidOK.absorbR natMonoidOK n
+                                       = {!!}
+      assoc++N xs (suc m , (y , ys)) zs rewrite lemma' xs (m , ys) y 
+                                         |       assoc++N (xs ++N < y >N) (m , ys) zs 
+                                         |       lemma' xs ((m , ys) ++N zs) y = {!!}
+
+
 
 {-
 \begin{exe}[a not inconsiderable problem]
