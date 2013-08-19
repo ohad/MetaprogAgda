@@ -480,10 +480,6 @@ concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
 symmetry :  {X : Set} {s t : X} -> s == t -> t == s
 symmetry refl = refl
 
-twoSubst : forall {k l k'} {X : Set k} {X' : X -> Set k'} {s t : X} {s' : X' s} {t' : X' t} ->
-           (p : s == t) -> (subst p X s' == t') -> (P : (u : X) -> X' u -> Set l) -> P s s' -> P t t'
-twoSubst refl refl P x = x
-
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = record 
   { 
@@ -497,13 +493,15 @@ listNMonoidOK {X} = record
 
       _++N<> : (xs : <! ListN !>N X) -> xs & neut == xs
       (zero , <>) ++N<> = refl
-      (suc n , (x , xs)) ++N<> rewrite (n , xs) ++N<> 
-        = twoSubst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
-                    (symmetry((n , xs) ++N<>))  
-                    (λ u u' → _==_ {X = <! ListN !>N X}
-                                (suc u , (x ,  {!snd u'!}))  (suc n , (x , xs)))
-                    (refl {X = <! ListN !>N X})
-
+      (suc n , (x , xs)) ++N<> 
+        = subst (symmetry ((n , xs) ++N<>))
+                 (vv λ m ys → (suc m , (x , ys)) == (suc n , (x , xs)))
+                 (refl {X = <! ListN !>N X})
+{-        = subst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
+                (λ u → _==_ {X = <! ListN !>N X}
+                              (suc u , (x ,  xs ++ <>))  (suc n , (x , xs)))
+                (?) -- refl {X = <! ListN !>N X})
+-}
 {-      subst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
                 (λ m → suc m , (x , xs ++ <>) == suc n , (x , xs)) 
                 (subst (symmetry (MonoidOK.absorbR listMonoidOK (forgetVec xs)))
@@ -522,12 +520,20 @@ listNMonoidOK {X} = record
       p (n , xs) = {!!} 
 
       assoc++N :  (xs ys zs : <! ListN !>N X) -> (xs & ys) & zs == xs & (ys & zs)
-      assoc++N (n , xs) (zero , <>) zs rewrite p (n , xs) 
+      assoc++N (n , xs) (zero , <>) (l , zs) 
         --                               |       MonoidOK.absorbR natMonoidOK n
-                                       = {!!}
-      assoc++N xs (suc m , (y , ys)) zs rewrite lemma' xs (m , ys) y 
-                                         |       assoc++N (xs ++N < y >N) (m , ys) zs 
-                                         |       lemma' xs ((m , ys) ++N zs) y = {!!}
+          = subst (symmetry ((n , xs) ++N<>)) 
+                   (vv λ m ys → (m +Nat l , ys ++ zs == n +Nat l , xs ++ zs))
+                   (refl {X = <! ListN !>N X})
+      assoc++N (n , xs) (suc m , (y , ys)) (l , zs) rewrite lemma' (n , xs) (m , ys) y 
+                                         |       lemma' (n , xs) ((m , ys) ++N (l , zs)) y 
+               = subst (symmetry (assoc++N ((n , xs) ++N < y >N) (m , ys) (l , zs) ))
+                       (vv λ k us → subst (symmetry (MonoidOK.assoc natMonoidOK n (suc m) l))
+                                           (λ a  →  _==_ {X = <! ListN !>N X}
+                                                          (k +Nat l , us ++ zs) 
+                                                          (a , xs ++ ((y , ys) ++ zs))))
+                                           ?
+                       (refl {X = <! ListN !>N X})
 
 
 
