@@ -467,15 +467,6 @@ _++N_ : {X : Set} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
 (suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys) 
 (suc m , (x , xs)) ++N (n , ys) | k , r  = suc k , (x , r)
 
-_+Commutativity_ : forall m n -> m +Nat n == n +Nat m
-m +Commutativity n = {!!}
-
-concatLength : forall {X : Set} m (xs : Vec X m) n (ys : Vec X n) -> ((m , xs) ++N (n , ys)) == ((m +Nat n) , (xs ++ ys))
-concatLength zero <> n ys = refl
-concatLength (suc m) (x , xs) n ys rewrite concatLength m xs n ys = refl
-
---_++<> : {X : Set} {n : Nat} -> (xs : Vec X n) -> (xs ++ <> == xs) 
---xs ++<> = {!!}
 
 symmetry :  {X : Set} {s t : X} -> s == t -> t == s
 symmetry refl = refl
@@ -613,7 +604,45 @@ record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
 
 
 vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
-vecApplicativeOKP = {!!}
+vecApplicativeOKP {n} = 
+  record { 
+    lawId = lawIdProof n ; 
+    lawCo = lawCoProof n ; 
+    lawHom = λ {S} {T} → lawHomProof n {S} {T}; 
+    lawCom = {!lawComProof n!} 
+  } where
+  
+    lawIdProof : (n : Nat) → {X : Set} → (x : Vec X n) → pure {{applicativeVec}} id <*> x == x
+    lawIdProof zero <> = refl
+    lawIdProof (suc n) (x , xs) = cong (λ us → x , us) (lawIdProof n xs)
+  
+    lawCoProof : (n : Nat) -> {R S T : Set } → (f : Vec (S → T) n) 
+                                             → (g : Vec (R → S) n) 
+                                             → (r : Vec R n) 
+                      → pure {{applicativeVec}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
+  
+    lawCoProof zero <> <> <> = refl
+    lawCoProof (suc n) (f , fs) (g , gs) (r , rs) 
+      = cong (λ us → f (g r) , us) (lawCoProof n fs gs rs)
+    
+    lemma : forall {X} (x : X) -> vec {0} x == <>
+    lemma x = refl
+  
+    lawHomProof : (n : Nat) → forall {S T}(f : S -> T)(s : S) ->
+                     pure {{applicativeVec {n}}} f <*> pure s == pure (f s)
+    lawHomProof zero {S} {T} f s = 
+      (vapp (vec f) (vec s))
+        << (cong (λ v → vapp (vec f) v) (lemma s)) !!=
+      <> 
+        =!! lemma (f s) >>
+      vec (f s) 
+        <QED>
+    lawHomProof (suc n) f s = cong (λ xs → f s , xs) (lawHomProof n f s)
+
+    lawComProof : forall (n : Nat) {S T}(f : Vec (S -> T) n)(s : S) ->
+                  f <*> pure s == pure {{applicativeVec}} (\ f -> f s) <*> f
+    lawComProof zero <> s = refl
+    lawComProof (suc n) (f , fs) s = cong (λ xs → f s , xs) (lawComProof n fs s)
 
 --ApplicativeHomomorphisms
 
