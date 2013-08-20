@@ -487,9 +487,7 @@ listNMonoidOK {X} = record
     absorbR = _++N<>;
     assoc = assoc++N
   } where  
-      forgetVec : forall {X n} -> Vec X n -> List X
-      forgetVec <> = <>
-      forgetVec (x , xs) = x , forgetVec xs
+      _&&_ = Monoid._&_ listNMonoid
 
       _++N<> : (xs : <! ListN !>N X) -> xs & neut == xs
       (zero , <>) ++N<> = refl
@@ -497,45 +495,23 @@ listNMonoidOK {X} = record
         = subst (symmetry ((n , xs) ++N<>))
                  (vv λ m ys → (suc m , (x , ys)) == (suc n , (x , xs)))
                  (refl {X = <! ListN !>N X})
-{-        = subst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
-                (λ u → _==_ {X = <! ListN !>N X}
-                              (suc u , (x ,  xs ++ <>))  (suc n , (x , xs)))
-                (?) -- refl {X = <! ListN !>N X})
+
+      assoc++N : (xs ys zs : <! ListN !>N X) -> (xs && ys) && zs == xs && (ys && zs)
+      assoc++N (zero , <>) ys zs = refl
+      assoc++N (suc n , (x , xs)) ys zs = subst { X = <! ListN !>N X}
+                                                (symmetry (assoc++N (n , xs) ys zs))
+                                                (vv λ l us → (suc l) , (x , us) == (suc n , (x , xs)) && (ys && zs))
+                                                refl
+{-
+
+Ask Conor: OK, but it's more ''natural'' to do induction over the
+middle list, ys: first we show associativity for the one element list,
+and then we move a single element left, abacus style.
+
+I spent a lot of time trying to do that, but couldn't. See
+listMonoidOK above.
+
 -}
-{-      subst (symmetry (MonoidOK.absorbR natMonoidOK n)) 
-                (λ m → suc m , (x , xs ++ <>) == suc n , (x , xs)) 
-                (subst (symmetry (MonoidOK.absorbR listMonoidOK (forgetVec xs)))
-                (λ ys → ((suc n , (x , ys)) == (suc n , (x , xs)))) (refl {X = <! ListN !>N X}))
--}
-
-      lemma' : (xs ys : <! ListN !>N X) (y : X) -> xs ++N (< y >N ++N ys) == (xs ++N < y >N) ++N ys
-      lemma' (zero , <>) ys y = refl
-      lemma' (suc n , (x , xs)) ys y rewrite lemma' (n , xs) ys y = refl
-
-
-      componentwise : (xs ys : <! ListN !>N X) -> fst xs +Nat fst ys == fst (xs ++N ys)
-      componentwise xs ys = {!!}
-
-      p : (xs : <! ListN !>N X) -> xs ++N (0 , <>) == xs
-      p (n , xs) = {!!} 
-
-      assoc++N :  (xs ys zs : <! ListN !>N X) -> (xs & ys) & zs == xs & (ys & zs)
-      assoc++N (n , xs) (zero , <>) (l , zs) 
-        --                               |       MonoidOK.absorbR natMonoidOK n
-          = subst (symmetry ((n , xs) ++N<>)) 
-                   (vv λ m ys → (m +Nat l , ys ++ zs == n +Nat l , xs ++ zs))
-                   (refl {X = <! ListN !>N X})
-      assoc++N (n , xs) (suc m , (y , ys)) (l , zs) rewrite lemma' (n , xs) (m , ys) y 
-                                         |       lemma' (n , xs) ((m , ys) ++N (l , zs)) y 
-               = subst (symmetry (assoc++N ((n , xs) ++N < y >N) (m , ys) (l , zs) ))
-                       (vv λ k us → subst (symmetry (MonoidOK.assoc natMonoidOK n (suc m) l))
-                                           (λ a  →  _==_ {X = <! ListN !>N X}
-                                                          (k +Nat l , us ++ zs) 
-                                                          (a , xs ++ ((y , ys) ++ zs))))
-                                           ?
-                       (refl {X = <! ListN !>N X})
-
-
 
 {-
 \begin{exe}[a not inconsiderable problem]
@@ -543,6 +519,26 @@ Find out what goes wrong when you try to state associativity of vector |++|,
 let alone prove it. What does it tell you about our |==| setup?
 \end{exe}
 -}
+
+projProof : forall {X : Set} -> (f : X -> Set) -> (t s : Sg X f) -> (t == s) 
+                   -> Sg ( fst t == fst s) 
+                         (λ p -> subst p f (snd t) == snd s)
+projProof f .s s refl = refl , refl
+
+
+concatAssoc : {X : Set} {n m l : Nat} -> (xs : Vec X n) -> (ys : Vec X m) -> (zs : Vec X l) -> 
+              (subst (MonoidOK.assoc natMonoidOK n m l) 
+                     (Vec X)
+                     ( ((xs ++ ys) ++ zs) ) 
+              ) ==
+              (xs ++ (ys ++ zs))
+concatAssoc {X} {n} {m} {l} xs ys zs with MonoidOK.assoc listNMonoidOK (n , xs) (m , ys) (l , zs)
+concatAssoc {X} {n} {m} {l} xs ys zs | r with projProof (Vec X) ((n +Nat m) +Nat l , (xs ++ ys) ++ zs) (n +Nat (m +Nat l) , xs ++ (ys ++ zs)) r
+concatAssoc xs ys zs | r | pk , pus = {!!} 
+
+{- Ah... If proofs of equality were unique, I could deduce that 
+  pk == _.assoc+ .n .m .l and finish this proof.  Is there indeed no way to prove this? -}
+
 
 record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set where
   field
@@ -577,6 +573,17 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
       map {{FF}}{X} id =1= id
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
+
+vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP λ X → Vec X n
+vecEndoFunctorOKP {n} = record { endoFunctorId = idProof n; endoFunctorCo = functorialityProof n } where
+  idProof : (n : Nat) -> {X : Set} (x : Vec X n) → vapp (vec (λ x₁ → x₁)) x == x
+  idProof zero <> = refl
+  idProof (suc m) (x , xs) rewrite idProof m xs = refl
+
+  functorialityProof : (n : Nat) -> {R S T : Set} (f : S → T) (g : R → S) (x : Vec R n) →
+                          vapp (vec f) (vapp (vec g) x) == vapp (vec (λ a → f (g a))) x
+  functorialityProof zero f g <> = refl
+  functorialityProof (suc m) f g (x , xs) rewrite functorialityProof m f g xs = refl
 
 --\section{Laws for |Applicative| and |Traversable|}
 
