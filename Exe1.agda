@@ -696,7 +696,7 @@ homSumOKP :  forall {F G}{{AF : Applicative F}}{{AG : Applicative G}} ->
 homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
   record {
     lawId = lawIdProof;
-    lawCo = {!!};
+    lawCo = lawCoProof;
     lawHom = {!!};
     lawCom = {!!}
   } where
@@ -714,14 +714,291 @@ homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
                           ff , u
                              <QED>
 
+    lawCoProof : {R S T : Set} (g : F (S → T) + G (S → T))
+                   (h : F (R → S) + G (R → S)) (r : F R + G R) →
+                   _<*>_ {{homSum f}}
+                   ( _<*>_ {{homSum f}} (_<*>_ {{homSum f}} (pure {{homSum f}} (λ g h → g o h)) g) h)
+                   r
+                   == _<*>_ {{homSum f}} g (_<*>_ {{homSum f}} h r) -- (_<*>_ {{homSum f}} h r)
+    lawCoProof (tt , g) (tt , h) (tt , r) = tt ,  _<*>_ {{AF}}
+                                                        ( _<*>_ {{AF}} (_<*>_ {{AF}} (pure {{AF}} (λ g h → g o h)) g) h) r
+                                              =!! cong (λ q → tt , q) (ApplicativeOKP.lawCo FOK g h r) >>
+                                            tt , (AF Applicative.<*> g) ((AF Applicative.<*> h) r)
+                                              <QED>
+    lawCoProof (tt , g) (tt , h) (ff , r) = ff ,
+                                              (AG Applicative.<*>
+                                              f
+                                              ((AF Applicative.<*>
+                                              (AF Applicative.<*> Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))) g)
+                                              h))
+                                              r
+                                                =!! cong (λ q → ff , (_<*>_ {{AG}} q r)) (AppHom.respApp homf ((_<*>_ {{AF}} (pure {{AF}} (λ g₁ g₂ a → g₁ (g₂ a))) g)) h) >>
+                                                ff ,
+                                                (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                f
+                                                ((AF Applicative.<*> Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                g))
+                                                (f h))
+                                                r
+                                                =!! cong (λ q → ff ,
+                                                                     (AG Applicative.<*>
+                                                                     (AG Applicative.<*>
+                                                                     q) (f h))
+                                                                     r)
+                                                                     (AppHom.respApp homf (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))) g) >>
+                                                ff , (AG Applicative.<*>
+                                                       (AG Applicative.<*>
+                                                         (AG Applicative.<*>
+                                                           (f ((Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))))
+                                                           (f g))
+                                                         (f h))
+                                                       r
+                                                   =!! cong (λ q → ff , (AG Applicative.<*>
+                                                               (AG Applicative.<*>
+                                                                 (AG Applicative.<*>
+                                                                   q)
+                                                                   (f g))
+                                                                 (f h))
+                                                               r)
+                                                            (AppHom.respPure homf (λ g h → g o h) ) >>
+                                                ff , (AG Applicative.<*>
+                                                        (AG Applicative.<*>
+                                                          (AG Applicative.<*>
+                                                            Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                            (f g))
+                                                          (f h))
+                                                        r
+                                                  =!! cong (λ q → ff , q) ((ApplicativeOKP.lawCo GOK (f g) (f h) r)) >>
+                                                ff , (AG Applicative.<*> f g) ((AG Applicative.<*> f h) r)
+                                                  <QED>
+    lawCoProof (tt , g) (ff , h) (tt , r) = ff ,
+                                                 (AG Applicative.<*>
+                                                   (AG Applicative.<*>
+                                                     f
+                                                     ((AF Applicative.<*>
+                                                       Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                       g))
+                                                     h)
+                                                   (f r)
+                                               =!! cong (λ q → ff ,
+                                                            (AG Applicative.<*>
+                                                              (AG Applicative.<*>
+                                                                q)
+                                                                h)
+                                                              (f r))
+                                                              (
+                                                              AppHom.respApp homf
+                                                              (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                              g) >>
+                                                              ff ,
+                                                              (AG Applicative.<*>
+                                                              (AG Applicative.<*>
+                                                              (AG Applicative.<*>
+                                                              (f (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))))
+                                                              (f g))
+                                                              h)
+                                                           (f r)
+                                                   =!! cong (λ q →  ff ,
+                                                                      (AG Applicative.<*>
+                                                                        (AG Applicative.<*>
+                                                                          (AG Applicative.<*>
+                                                                            q)
+                                                                            (f g))
+                                                                          h)
+                                                                        (f r))
+                                                            (AppHom.respPure homf (λ g h  → g o h)) >>
+                                               ff ,
+                                                 (AG Applicative.<*>
+                                                   (AG Applicative.<*>
+                                                     (AG Applicative.<*>
+                                                       Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                       (f g))
+                                                     h)
+                                                   (f r)
+                                                 =!! cong (λ q → ff , q) (ApplicativeOKP.lawCo GOK (f g) h (f r)) >>
+                                               ff , (AG Applicative.<*> f g) ((AG Applicative.<*> h) (f r))
+                                                 <QED>
+    lawCoProof (tt , g) (ff , h) (ff , r) = ff ,
+                                               (AG Applicative.<*>
+                                                 (AG Applicative.<*>
+                                                   f
+                                                   ((AF Applicative.<*>
+                                                     Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                     g))
+                                                   h)
+                                                 r
+                                              =!! cong (λ q → ff ,
+                                                                   (AG Applicative.<*>
+                                                                     (AG Applicative.<*>
+                                                                       q)
+                                                                       h)
+                                                                     r)
+                                                       ( AppHom.respApp homf
+                                                                        (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                                        g) >>
+                                            ff ,
+                                                 (AG Applicative.<*>
+                                                   (AG Applicative.<*>
+                                                     (AG Applicative.<*>
+                                                       f
+                                                       (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))
+                                                       (f g))
+                                                     h)
+                                                   r
+                                              =!! cong (λ q →
+                                                           ff ,
+                                                             (AG Applicative.<*>
+                                                               (AG Applicative.<*>
+                                                                 (AG Applicative.<*>
+                                                                   q)
+                                                                   (f g))
+                                                                 h)
+                                                               r)
+                                                               (AppHom.respPure homf
+                                                                 (λ g₁ g₂ a → g₁ (g₂ a))) >>
+                                            ff ,
+                                                 (AG Applicative.<*>
+                                                   (AG Applicative.<*>
+                                                     (AG Applicative.<*>
+                                                       Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                       (f g))
+                                                     h)
+                                                   r
+                                              =!! cong (λ q → ff , q) (ApplicativeOKP.lawCo GOK (f g) h r) >>
+                                            ff , (AG Applicative.<*> f g) ((AG Applicative.<*> h) r) <QED>
+    lawCoProof (ff , g) (tt , h) (tt , r) = ff ,
+                                                 (AG Applicative.<*>
+                                                   (AG Applicative.<*>
+                                                     (AG Applicative.<*>
+                                                       f (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))
+                                                     g)
+                                                   (f h))
+                                                 (f r)
+                                              =!! cong (λ q →
+                                                           ff ,
+                                                             (AG Applicative.<*>
+                                                               (AG Applicative.<*>
+                                                                 (AG Applicative.<*>
+                                                                   q)
+                                                                   g)
+                                                                 (f h))
+                                                               (f r))
+                                                       (AppHom.respPure homf (λ g h → g o h)) >>
+                                            ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                    g)
+                                                  (f h))
+                                                (f r)
+                                              =!! cong (λ q → ff , q) (ApplicativeOKP.lawCo GOK g (f h) (f r)) >>
+                                            ff , (AG Applicative.<*> g) ((AG Applicative.<*> f h) (f r))
+                                              << cong (λ q → ff , (AG Applicative.<*> g) q )
+                                                      (AppHom.respApp homf h r) !!=
+                                            ff , (AG Applicative.<*> g) (f ((AF Applicative.<*> h) r)) <QED>
+    lawCoProof (ff , g) (tt , h) (ff , r) = ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    f (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))
+                                                    g)
+                                                  (f h))
+                                                r
+                                              =!! cong (λ q →
+                                                            ff ,
+                                                              (AG Applicative.<*>
+                                                                (AG Applicative.<*>
+                                                                  (AG Applicative.<*>
+                                                                    q)
+                                                                    g)
+                                                                  (f h))
+                                                                r
+
+                                                       )
+                                                       (AppHom.respPure homf (λ g h → g o h)) >>
+                                            ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                    g)
+                                                  (f h))
+                                                r
+                                              =!! cong (λ q → ff , q )
+                                                       (ApplicativeOKP.lawCo GOK g (f h) r) >>
+                                            ff , (AG Applicative.<*> g) ((AG Applicative.<*> f h) r) <QED>
+    lawCoProof (ff , g) (ff , h) (tt , r) =
+                                            ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    f (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))
+                                                    g)
+                                                  h)
+                                              (f r)
+                                              =!! cong (λ q → ff ,
+                                                                (AG Applicative.<*>
+                                                                  (AG Applicative.<*>
+                                                                    (AG Applicative.<*>
+                                                                      q)
+                                                                      g)
+                                                                    h)
+                                                                  (f r)
+                                                              )
+                                                       (AppHom.respPure homf (λ g h → g o h)) >>
+                                            ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a)))
+                                                    g)
+                                                  h)
+                                                (f r)
+                                              =!! cong (λ q → ff , q)
+                                                       (ApplicativeOKP.lawCo GOK g h (f r)) >>
+                                            ff , (AG Applicative.<*> g) ((AG Applicative.<*> h) (f r)) <QED>
+    lawCoProof (ff , g) (ff , h) (ff , r) = ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    f
+                                                      (Applicative.pure AF (λ g₁ g₂ a → g₁ (g₂ a))))
+                                                    g)
+                                                  h)
+                                                r
+                                              =!! cong (λ q →
+                                                              ff ,
+                                                                (AG Applicative.<*>
+                                                                  (AG Applicative.<*>
+                                                                    (AG Applicative.<*>
+                                                                      q)
+                                                                      g)
+                                                                    h)
+                                                                  r
+                                                              )
+                                                       (AppHom.respPure homf (λ g h → g o h)) >>
+                                            ff ,
+                                              (AG Applicative.<*>
+                                                (AG Applicative.<*>
+                                                  (AG Applicative.<*>
+                                                    Applicative.pure AG (λ g₁ g₂ a → g₁ (g₂ a))) g)
+                                                    h)
+                                                  r
+                                              =!! cong (λ q → ff , q) (ApplicativeOKP.lawCo GOK g h r) >>
+                                            ff , (AG Applicative.<*> g) ((AG Applicative.<*> h) r) <QED>
+                   {- FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU----!!!
+                                            That was long.
+
+                                            Try to think of a shorter and more abstract way to go about
+                                            it. Even just some kind of clever syntax to rid the boilerplate
+                                            would be nice.
+
+                   -}
 -- To Conor: The fact that respPure is typeset as resppure is confusing!!!!
 
-                          {- ff , _<*>_ {{AG}} (pure {{AG}} (λ x → x)) (f u)
-                             << cong (λ q → ff , ( q <*> f u)) (AppHom.respPure homf id ) !!=
-                          ff , _<*>_ {{AG}}  (f (pure {{AF}} id)) (f u)
-                             << cong (λ q → ff , q) (AppHom.respApp homf (pure id) u) !!=
-                          ff , f (pure id <*> u)
-                            =!! cong (λ q → ff , f q) (ApplicativeOKP.lawId FOK u) >> -}
+
 -- traversable laws
 
 record TraversableOKP F {{TF : Traversable F}} : Set1 where
