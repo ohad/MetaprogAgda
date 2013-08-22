@@ -74,7 +74,7 @@ upto zero = <>
 upto (suc n₁) = zero , vmap nudge (upto n₁)
 
 tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
-tabulate {n} f = vmap f (upto n) 
+tabulate {n} f = vmap f (upto n)
 
 -- Functors and Applicatives
 
@@ -124,15 +124,15 @@ monadVec : {n : Nat} -> Monad \ X -> Vec X n
 monadVec = record { return  = vec; _>>=_ = λ vs f → mult (map f vs)}
 
 applicativeId : Applicative id
-applicativeId = record { pure = id; 
+applicativeId = record { pure = id;
                          _<*>_ = id }
 
 applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
-applicativeComp {F} {G} aF aG = 
-  record {   
-           pure  = pure {{aF}} o pure ;  
-           _<*>_  = _<*>_ {{aF}} o 
-                         map {{applicativeEndoFunctor {{aF}}}} _<*>_ 
+applicativeComp {F} {G} aF aG =
+  record {
+           pure  = pure {{aF}} o pure ;
+           _<*>_  = _<*>_ {{aF}} o
+                         map {{applicativeEndoFunctor {{aF}}}} _<*>_
   }
 
 record Monoid (X : Set) : Set where
@@ -141,20 +141,20 @@ record Monoid (X : Set) : Set where
     neut  : X
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
-  monoidApplicative = 
-    record { 
-      pure = λ _ → neut; 
-      _<*>_ = λ x y → x & y 
+  monoidApplicative =
+    record {
+      pure = λ _ → neut;
+      _<*>_ = λ x y → x & y
     }
 open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 
 --Show by construction that the pointwise product of |Applicative|s is
 -- |Applicative|.
 
-ptwsApplicative : forall { F G } -> Applicative F -> Applicative G 
+ptwsApplicative : forall { F G } -> Applicative F -> Applicative G
                     -> Applicative (\ X -> (F X) * (G X))
-ptwsApplicative aF aG = 
-  record { 
+ptwsApplicative aF aG =
+  record {
     pure = λ x → (pure x) , (pure x);
     _<*>_ = vv (λ fF gG → vv (λ sF sG → (fF <*> sF) , (gG <*> sG)))
   }
@@ -173,7 +173,7 @@ vtr {{aG}} f <>        = pure {{aG}} <>
 vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
 
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
-traversableVec = record { traverse = vtr } 
+traversableVec = record { traverse = vtr }
 
 transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
 transpose = traverse id
@@ -190,10 +190,10 @@ What other structure does it preserve?-}
 idTraverse : Traversable id
 idTraverse = record { traverse = id }
 
-compTraverse : forall {F G} -> Traversable F -> Traversable G 
+compTraverse : forall {F G} -> Traversable F -> Traversable G
                  -> Traversable (F o G)
-compTraverse tF tG = 
-  record { 
+compTraverse tF tG =
+  record {
     traverse = λ h s → traverse {{tF}} (traverse {{tG}} h) s
   }
 
@@ -267,8 +267,8 @@ concatSurjectivity {suc m} (x , v) with concatSurjectivity {m} v
 concatSurjectivity {suc m} (x , .(u ++ w)) | from (u , w) = from ((x , u) , w)
 
 nProj : forall { X } F G (s : <! F *N G !>N X) -> (nPair F G) ^-1 s
-nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG 
-nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w)) 
+nProj F G ((sF , sG) , vFG) with concatSurjectivity {size F sF} vFG
+nProj F G ((sF , sG) , .(u ++ w)) | from (u , w) = from ((sF , u) , (sG , w))
 
 monmult : forall {X} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
 monmult (n , xs) (m , ys) = (n +Nat m) , (xs ++ ys)
@@ -342,7 +342,7 @@ shiftRev (suc i) = suc (shiftRev i)
 shiftTimes : {m n : Nat} -> (i : Fin n) -> Fin ((suc m) *Nat n)
 shiftTimes zero = zero
 shiftTimes {zero} {suc n} (suc i) = suc (shiftRev i)
-shiftTimes {suc m} {suc n} (suc i) = nudge (shift {n} {suc (n +Nat (m *Nat suc n))} (nudge (shiftRev i)))  
+shiftTimes {suc m} {suc n} (suc i) = nudge (shift {n} {suc (n +Nat (m *Nat suc n))} (nudge (shiftRev i)))
 
 slip : {m n : Nat} -> (i : Fin n) -> Fin (m +Nat n)
 slip {zero} i = i
@@ -350,7 +350,7 @@ slip {suc m} i = suc (slip {m} i)
 
 -- Some matrix operations
 
-kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n 
+kroenecker : {m n : Nat} {X Y : Set} -> Vec X m -> Vec Y n
                -> Vec (Vec (X * Y) n) m
 kroenecker xs ys = vmap (λ x → vmap (λ y → x , y) ys) xs
 
@@ -391,9 +391,9 @@ drop F G (sF , sG) |    suc n = {!!}
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
 drop F G (sF , sG) = (sF , vec sG) , include {Shape G} {size G} {sG} (size F sF) where
-  include : forall {X} -> {f : X -> Nat } -> {x : X} -> (n : Nat) 
-                       -> Vec (Fin (n *Nat (f x))) 
-                                   (vtr {n} {\ _ -> Nat} {X} {One} 
+  include : forall {X} -> {f : X -> Nat } -> {x : X} -> (n : Nat)
+                       -> Vec (Fin (n *Nat (f x)))
+                                   (vtr {n} {\ _ -> Nat} {X} {One}
                                             {{monoidApplicative}} f (vec x))
   include {X} {f} {x} zero  = <>
   include {X} {f} {x} (suc n) = map shiftRev (upto (f x)) ++ map (shift {f x}) (include {X} {f} {x} n)
@@ -436,11 +436,11 @@ listMonoid : {X : Set} -> Monoid (List X)
 listMonoid {X} = record { neut = <>; _&_ = _++L_ }
 
 listMonoidOK : {X : Set} -> MonoidOK (List X)
-listMonoidOK {X} = record 
-  { 
-    absorbL = λ _ → refl; 
-    absorbR = _++L<>; 
-    assoc = assoc++L 
+listMonoidOK {X} = record
+  {
+    absorbL = λ _ → refl;
+    absorbR = _++L<>;
+    assoc = assoc++L
   } where
     _++L<> : forall xs -> xs ++L <> == xs
     <> ++L<> = refl
@@ -452,8 +452,8 @@ listMonoidOK {X} = record
 
     assoc++L : forall xs ys zs -> (xs ++L ys) ++L zs == xs ++L (ys ++L zs)
     assoc++L xs <> zs rewrite xs ++L<> = refl
-    assoc++L xs (y , ys) zs rewrite lemma xs ys y 
-                            |       assoc++L (xs ++L (y , <>)) ys zs 
+    assoc++L xs (y , ys) zs rewrite lemma xs ys y
+                            |       assoc++L (xs ++L (y , <>)) ys zs
                             |       lemma xs (ys ++L zs) y = refl
 
 <>N : {X : Set} -> <! ListN !>N X
@@ -464,7 +464,7 @@ listMonoidOK {X} = record
 
 _++N_ : {X : Set} -> <! ListN !>N X -> <! ListN !>N X -> <! ListN !>N X
 (zero , <>) ++N (n , ys) = n , ys
-(suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys) 
+(suc m , (x , xs)) ++N (n , ys) with (m , xs) ++N (n , ys)
 (suc m , (x , xs)) ++N (n , ys) | k , r  = suc k , (x , r)
 
 
@@ -472,17 +472,17 @@ symmetry :  {X : Set} {s t : X} -> s == t -> t == s
 symmetry refl = refl
 
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
-listNMonoidOK {X} = record 
-  { 
-    absorbL = λ x → refl {X = <! ListN !>N X} ; 
+listNMonoidOK {X} = record
+  {
+    absorbL = λ x → refl {X = <! ListN !>N X} ;
     absorbR = _++N<>;
     assoc = assoc++N
-  } where  
+  } where
       _&&_ = Monoid._&_ listNMonoid
 
       _++N<> : (xs : <! ListN !>N X) -> xs & neut == xs
       (zero , <>) ++N<> = refl
-      (suc n , (x , xs)) ++N<> 
+      (suc n , (x , xs)) ++N<>
         = subst (symmetry ((n , xs) ++N<>))
                  (vv λ m ys → (suc m , (x , ys)) == (suc n , (x , xs)))
                  (refl {X = <! ListN !>N X})
@@ -511,23 +511,23 @@ let alone prove it. What does it tell you about our |==| setup?
 \end{exe}
 -}
 
-projProof : forall {X : Set} -> (f : X -> Set) -> (t s : Sg X f) -> (t == s) 
-                   -> Sg ( fst t == fst s) 
+projProof : forall {X : Set} -> (f : X -> Set) -> (t s : Sg X f) -> (t == s)
+                   -> Sg ( fst t == fst s)
                          (λ p -> subst p f (snd t) == snd s)
 projProof f .s s refl = refl , refl
 
 
-concatAssoc : {X : Set} {n m l : Nat} -> (xs : Vec X n) -> (ys : Vec X m) -> (zs : Vec X l) -> 
-              (subst (MonoidOK.assoc natMonoidOK n m l) 
+concatAssoc : {X : Set} {n m l : Nat} -> (xs : Vec X n) -> (ys : Vec X m) -> (zs : Vec X l) ->
+              (subst (MonoidOK.assoc natMonoidOK n m l)
                      (Vec X)
-                     ( ((xs ++ ys) ++ zs) ) 
+                     ( ((xs ++ ys) ++ zs) )
               ) ==
               (xs ++ (ys ++ zs))
 concatAssoc {X} {n} {m} {l} xs ys zs with MonoidOK.assoc listNMonoidOK (n , xs) (m , ys) (l , zs)
 concatAssoc {X} {n} {m} {l} xs ys zs | r with projProof (Vec X) ((n +Nat m) +Nat l , (xs ++ ys) ++ zs) (n +Nat (m +Nat l) , xs ++ (ys ++ zs)) r
-concatAssoc xs ys zs | r | pk , pus = {!!} 
+concatAssoc xs ys zs | r | pk , pus = {!!}
 
-{- Ah... If proofs of equality were unique, I could deduce that 
+{- Ah... If proofs of equality were unique, I could deduce that
   pk == _.assoc+ .n .m .l and finish this proof.  Is there indeed no way to prove this? -}
 
 
@@ -596,7 +596,7 @@ record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
            << lawCo (pure f) (pure g) r !!=
          pure {{AF}} (\ f g -> f o g) <*> pure f <*> pure g <*> r
            =!! cong (\ x -> x <*> pure g <*> r) (lawHom (\ f g -> f o g) f) >>
-         pure {{AF}} (_o_ f) <*> pure g <*> r 
+         pure {{AF}} (_o_ f) <*> pure g <*> r
            =!! cong (\ x -> x <*> r) (lawHom (_o_ f) g) >>
          pure {{AF}} (f o g) <*> r
            <QED>
@@ -604,38 +604,38 @@ record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
 
 
 vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
-vecApplicativeOKP {n} = 
-  record { 
-    lawId = lawIdProof n ; 
-    lawCo = lawCoProof n ; 
-    lawHom = λ {S} {T} → lawHomProof n {S} {T}; 
-    lawCom = {!lawComProof n!} 
+vecApplicativeOKP {n} =
+  record {
+    lawId = lawIdProof n ;
+    lawCo = lawCoProof n ;
+    lawHom = λ {S} {T} → lawHomProof n {S} {T};
+    lawCom = lawComProof n
   } where
-  
+
     lawIdProof : (n : Nat) → {X : Set} → (x : Vec X n) → pure {{applicativeVec}} id <*> x == x
     lawIdProof zero <> = refl
     lawIdProof (suc n) (x , xs) = cong (λ us → x , us) (lawIdProof n xs)
-  
-    lawCoProof : (n : Nat) -> {R S T : Set } → (f : Vec (S → T) n) 
-                                             → (g : Vec (R → S) n) 
-                                             → (r : Vec R n) 
+
+    lawCoProof : (n : Nat) -> {R S T : Set } → (f : Vec (S → T) n)
+                                             → (g : Vec (R → S) n)
+                                             → (r : Vec R n)
                       → pure {{applicativeVec}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
-  
+
     lawCoProof zero <> <> <> = refl
-    lawCoProof (suc n) (f , fs) (g , gs) (r , rs) 
+    lawCoProof (suc n) (f , fs) (g , gs) (r , rs)
       = cong (λ us → f (g r) , us) (lawCoProof n fs gs rs)
-    
+
     lemma : forall {X} (x : X) -> vec {0} x == <>
     lemma x = refl
-  
+
     lawHomProof : (n : Nat) → forall {S T}(f : S -> T)(s : S) ->
                      pure {{applicativeVec {n}}} f <*> pure s == pure (f s)
-    lawHomProof zero {S} {T} f s = 
+    lawHomProof zero {S} {T} f s =
       (vapp (vec f) (vec s))
         << (cong (λ v → vapp (vec f) v) (lemma s)) !!=
-      <> 
+      <>
         =!! lemma (f s) >>
-      vec (f s) 
+      vec (f s)
         <QED>
     lawHomProof (suc n) f s = cong (λ xs → f s , xs) (lawHomProof n f s)
 
@@ -667,17 +667,61 @@ monoidApplicativeHom f {{hf}} = record
 --Show that a homomorphism from |F| to |G| induces applicative structure
 --on their pointwise sum.
 
+coerce : forall {F G} {{AF : Applicative F}}{{AG : Applicative G}}
+         (f : F -:> G) -> {X : Set} -> (F X + G X) -> G X
+coerce f (tt , u) = f u
+coerce f (ff , u) = u
+
+
 homSum :  forall {F G}{{AF : Applicative F}}{{AG : Applicative G}} ->
-          (f : F -:> G) -> 
+          (f : F -:> G) ->
           Applicative \ X -> F X + G X
-homSum {{AF}}{{AG}} f = {!!}
+homSum {F} {G} {{AF}}{{AG}} f =
+  record {
+    pure = λ x → tt , (pure {{AF}} x);
+    _<*>_ =  app
+  } where
+  app : {S T : Set} →
+             Sg Two (F (S → T) <?> G (S → T)) →
+             Sg Two (F S <?> G S) → Sg Two (F T <?> G T)
+  app (tt , g) (tt , u) = tt , (g <*> u)
+  app (tt , g) (ff , u) = ff , (f g <*> u )
+  app (ff , g) (tt , u) = ff , (g <*> f u)
+  app (ff , g) (ff , u) = ff , (g <*> u)
 
 homSumOKP :  forall {F G}{{AF : Applicative F}}{{AG : Applicative G}} ->
              ApplicativeOKP F -> ApplicativeOKP G ->
              (f : F -:> G) -> AppHom f ->
              ApplicativeOKP _ {{homSum f}}
-homSumOKP {{AF}}{{AG}} FOK GOK f homf = {!!}
+homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
+  record {
+    lawId = lawIdProof;
+    lawCo = {!!};
+    lawHom = {!!};
+    lawCom = {!!}
+  } where
+    lawIdProof : {X : Set} -> (x : F X + G X) ->
+                    --(ff , pure {{AG}} (λ x₁ → x₁)) <*> (coerce f x)
+                 _<*>_ {{homSum f}} (pure {{homSum f}} id) x == x
+    lawIdProof (tt , u) = tt , (AF Applicative.<*> Applicative.pure AF (λ x → x)) u
+                            =!! cong (_,_ tt) (ApplicativeOKP.lawId FOK u) >>
+                          tt , u <QED>
 
+    lawIdProof (ff , u) = ff , (AG Applicative.<*> f (Applicative.pure AF (λ x → x))) u
+                             =!! cong (λ q → ff , (q <*> u)) (AppHom.respPure homf id) >>
+                          ff , (AG Applicative.<*> Applicative.pure AG (λ x → x)) u
+                             =!! cong (_,_ ff) (ApplicativeOKP.lawId GOK u) >>
+                          ff , u
+                             <QED>
+
+-- To Conor: The fact that respPure is typeset as resppure is confusing!!!!
+
+                          {- ff , _<*>_ {{AG}} (pure {{AG}} (λ x → x)) (f u)
+                             << cong (λ q → ff , ( q <*> f u)) (AppHom.respPure homf id ) !!=
+                          ff , _<*>_ {{AG}}  (f (pure {{AF}} id)) (f u)
+                             << cong (λ q → ff , q) (AppHom.respApp homf (pure id) u) !!=
+                          ff , f (pure id <*> u)
+                            =!! cong (λ q → ff , f q) (ApplicativeOKP.lawId FOK u) >> -}
 -- traversable laws
 
 record TraversableOKP F {{TF : Traversable F}} : Set1 where
@@ -731,4 +775,3 @@ Dec X = X + (X -> Zero)
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
 eq? N sheq? t t' = {!!}
-
