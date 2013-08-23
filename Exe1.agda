@@ -697,8 +697,8 @@ homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
   record {
     lawId = lawIdProof;
     lawCo = lawCoProof;
-    lawHom = {!!};
-    lawCom = {!!}
+    lawHom = lawHomProof;
+    lawCom = {!lawComProof!}
   } where
     lawIdProof : {X : Set} -> (x : F X + G X) ->
                     --(ff , pure {{AG}} (λ x₁ → x₁)) <*> (coerce f x)
@@ -996,6 +996,26 @@ homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
                                             would be nice.
 
                    -}
+    lawHomProof : {S T : Set} (g : S → T) (s : S) →
+                   tt , (AF Applicative.<*> Applicative.pure AF g) (Applicative.pure AF s)
+                   == tt , Applicative.pure AF (g s)
+    lawHomProof g s = tt ,
+                         (AF Applicative.<*> Applicative.pure AF g) (Applicative.pure AF s)
+                        =!! cong (λ q → tt , q) (ApplicativeOKP.lawHom FOK g s) >>
+                      tt , Applicative.pure AF (g s) <QED>
+    lawComProof : {S T : Set} (g : Sg Two (F (S → T) <?> G (S → T))) (s : S) →
+                      _<*>_ {{homSum f}} g (pure {{homSum f}} s) == _<*>_ {{homSum f}} (pure {{homSum f}} (\h -> h s)) g
+    lawComProof (tt , g) s = tt , (AF Applicative.<*> g) (Applicative.pure AF s)
+                               =!! cong (λ q → (tt , q)) (ApplicativeOKP.lawCom FOK g s) >>
+                             tt , (AF Applicative.<*> Applicative.pure AF (λ f₁ → f₁ s)) g <QED>
+    lawComProof (ff , g) s = ff , (AG Applicative.<*> g) (f (Applicative.pure AF s))
+                               =!! cong (λ q → (ff , (AG Applicative.<*> g) q)) (AppHom.respPure homf s) >>
+                             ff , (AG Applicative.<*> g) (Applicative.pure AG s)
+                               =!! cong (λ q → ff , q) (ApplicativeOKP.lawCom GOK g s) >>
+                             ff , (AG Applicative.<*> Applicative.pure AG (λ f₁ → f₁ s)) g
+                               << cong (λ q → ff , _<*>_ {{AG}} q g) (AppHom.respPure homf (λ f₁ → f₁ s)) !!=
+                             ff , (AG Applicative.<*> f (Applicative.pure AF (λ h → h s))) g <QED>
+
 -- To Conor: The fact that respPure is typeset as resppure is confusing!!!!
 
 
