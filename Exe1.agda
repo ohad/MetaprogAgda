@@ -698,7 +698,7 @@ homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
     lawId = lawIdProof;
     lawCo = lawCoProof;
     lawHom = lawHomProof;
-    lawCom = {!lawComProof!}
+    lawCom = lawComProof
   } where
     lawIdProof : {X : Set} -> (x : F X + G X) ->
                     --(ff , pure {{AG}} (λ x₁ → x₁)) <*> (coerce f x)
@@ -1023,7 +1023,7 @@ homSumOKP {F} {G} {{AF}}{{AG}} FOK GOK f homf =
 
 record TraversableOKP F {{TF : Traversable F}} : Set1 where
   field
-    lawId   :  forall  {X}(xs : F X) -> traverse id xs == xs
+    lawId   :  forall  {X}(xs : F X) -> traverse {{TF}} id xs == xs
     lawCo   :  forall  {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
                        {R S T}(g : S -> G T)(h : R -> H S)(rs : F R) ->
                let  EH : EndoFunctor H ; EH = applicativeEndoFunctor
@@ -1040,11 +1040,40 @@ record TraversableOKP F {{TF : Traversable F}} : Set1 where
 Batch : Set -> Set -> Set
 Batch X Y = Sg Nat \ n -> Vec X n -> Y
 
+ABatch : {X : Set} -> Applicative  (Batch X)
+ABatch {X} =
+  record {
+    pure = λ y → 0 , (λ x → y);
+    _<*>_ = app
+  } where
+    app : {S T : Set} -> Batch X (S -> T) -> Batch X S -> Batch X T
+    app (n , vs) (m , us) = (n +Nat m) , (λ ws → splitAndApply ws) where
+      splitAndApply : (ws : Vec _ (n +Nat m)) -> _
+      splitAndApply ws with concatSurjectivity {n} ws
+      splitAndApply .(vi ++ ui) | from (vi , ui) = (vs vi) (us ui)
+
+BatchOK : {X : Set} -> ApplicativeOKP (Batch X)
+BatchOK {X} =
+  record {
+    lawId = lawIdProof;
+    lawCo = {!lawCoProof!};
+    lawHom = {!!};
+    lawCom = {!!}
+  } where
+  lawIdProof : {X₁ : Set} (x : Sg Nat (λ n → Vec X n → X₁)) →
+                   fst x , (λ ws → snd x ws) == x
+  lawIdProof (n , ub) = refl
+
+  lawCoProof : forall {R S T}(f : Batch X (S -> T))(g : Batch X (R -> S))(r : Batch X R) ->
+               pure {{ABatch}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
+  lawCoProof (n , f) (m , g) (l , r) = {!!}
+
 
 fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
               forall {X} -> <! normalT F !>N X -> F X
-fromNormal {{TF}} tokf x = {!!}
-
+fromNormal {F} {{TF}} tokf {X} (sF , cF) = {!!} where
+  foo : One -> Batch X (F X)
+  foo <> = (sizeT {{TF}} sF) , (λ vs → {!!})
 
 -- fixpoints of normal functors
 
