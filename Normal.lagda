@@ -88,7 +88,7 @@ nInj F G (ff , ShG , xs) = (ff , ShG) , xs
 Now, we could implement the other direction of the isomorphism, but an
 alternative is to define the \emph{inverse image}.
 
-%format ^-1 = "{}^{\F{ -1}}"
+%format ^-1 = "{}^{\D{ -1}}"
 %format from = "\C{from}"
 \begin{code}
 data _^-1_ {S T : Set}(f : S -> T) : T -> Set where
@@ -166,6 +166,7 @@ nSplit F G ((f , g) , .(ys ++ zs)) | from (ys , zs) = from ((f , ys) , (g , zs))
 \begin{exe}[|ListN| monoid]
 While you are in this general area, construct (from readily available components)
 the usual monoid structure for our normal presentation of lists.
+%format listNMonoid = "\F{listNMonoid}"
 \begin{spec}
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = ?
