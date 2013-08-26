@@ -292,8 +292,8 @@ sizeT {{TF}} = crush {{TF}} (\ _ -> 1)
 normalT : forall F {{TF : Traversable F}} -> Normal
 normalT F {{TF}} = F One / sizeT {{TF}}
 
---shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
---shapeT = traverse (\ _ -> <>)
+shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
+shapeT {{TF}} = traverse {{TF}}  (\ _ -> <>)
 
 one : forall {X} -> X -> <! ListN !>N X
 one x = 1 , (x , <>)
@@ -383,10 +383,16 @@ swap F G (sF , sG) = (sG , sF) , flatten swappedIndexMatrix where
 
 {----- Ask Conor why Agda can't figured out that in the first case
  ----- size F sF == 0.
+
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
 drop F G (sF , sG) with (size F sF)
 drop F G (sF , sG) |    zero = (sF , {!!}) , {!!}
 drop F G (sF , sG) |    suc n = {!!}
+
+mydrop : (F G : Normal) -> (F >< G) -N> (F oN G)
+mydrop F G (fst , snd) with (size F fst) 
+mydrop F G (fst , snd) | zero = (fst   , {!!}) , {!!}
+mydrop F G (fst , snd) | suc q = {!!}
 -}
 
 drop : (F G : Normal) -> (F >< G) -N> (F oN G)
@@ -1071,9 +1077,21 @@ BatchOK {X} =
 
 fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
               forall {X} -> <! normalT F !>N X -> F X
-fromNormal {F} {{TF}} tokf {X} (sF , cF) = {!!} where
-  foo : One -> Batch X (F X)
-  foo <> = (sizeT {{TF}} sF) , (λ vs → {!!})
+fromNormal {F} {{TF}} tokf {X} (sF , cF) with foo sF where
+  bar : Vec X 1 -> X
+  bar (x , <>) = x
+  foo : F One -> Batch X (F X)
+  foo sF = traverse {G = Batch X} (λ (x : One) → 1 , bar) sF 
+  coherence : (u : F X) -> fst (foo (shapeT u)) == sizeT {{TF}} (shapeT {F} {{TF}} u)
+  coherence u = fst
+      (Traversable.traverse TF (λ x → 1 , bar)
+       (Traversable.traverse TF (λ _ → <>) u))
+                =!! TraversableOKP.lawCo tokf {{{!!}}} {{{!!}}} (λ x → 1 , bar) (λ _ → <>) u >> {! Traversable.traverse TF (λ _ → 1)
+      (Traversable.traverse TF (λ _ → <>) u) <QED>!}
+
+fromNormal {{TF}} tokf (sF , cF) | n , fcF = {!!}
+  
+  
 
 -- fixpoints of normal functors
 
@@ -1095,8 +1113,8 @@ NatInd :  forall {l}(P : Tree NatT -> Set l) ->
           (n : Tree NatT) -> P n
 NatInd P z s n = {!!}
 
-Dec : Set -> Set
-Dec X = X + (X -> Zero)
+--Dec : Set -> Set
+--Dec X = X + (X -> Zero)
 
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
