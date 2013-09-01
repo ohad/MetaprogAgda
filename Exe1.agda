@@ -1092,11 +1092,14 @@ coherence {F} {{TF}} {X} tokF u =
    (Traversable.traverse TF {λ _ → Nat} {One {lzero}} {X}
      {{record { pure = λ {_} _ → 0; _<*>_ = λ {_} {_} → _+Nat_ }}}
      (λ a → 1) u)
-     =!! {!!} >>
+     =!! TraversableOKP.lawCo {F} {TF} tokF 
+                              {G = id} {{AG = applicativeId}} 
+                              {H = λ _ → Nat} {{AH = monoidApplicative}} 
+                              (λ _ → <>) (λ _ → 1) u >>
    (Traversable.traverse TF {λ _ → Nat} {One {lzero}} {One}
      {{record { pure = λ {_} _ → 0; _<*>_ = λ {_} {_} → _+Nat_ }}}
      (λ a → 1) u) <QED>
-  
+
 
 
 fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
@@ -1104,12 +1107,6 @@ fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
 fromNormal {F} {{TF}} tokf {X} (sF , cF) with (coherence {F} {{TF}} {X} tokf sF) 
 fromNormal {F} {{TF}} tokf {X} (sF , cF) | q with foo {F} {{TF}} sF {X} 
 fromNormal {F} {{TF}} tokf {X} (sF , cF) | q | n , csF = csF (subst (symmetry q) (λ u → Vec X u) cF)
-{-
-with 
-fromNormal {F} {{TF}} tokf {X} (sF , cF) | n , fcF = fcF (subst {!!} 
-           (λ q → Vec X q) cF)
--}
-
 
 -- fixpoints of normal functors
 
