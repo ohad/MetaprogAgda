@@ -1075,18 +1075,18 @@ BatchOK {X} =
   lawCoProof (n , f) (m , g) (l , r) = {!!}
 
 
-bar : forall {X} -> Vec X 1 -> X
-bar (x , <>) = x
-foo : forall {F} {{TF : Traversable F}} -> F One -> forall {X} -> Batch X (F X)
-foo {F} {{TF}} sF {X} = traverse {F} {{TF}} {Batch X} {{ABatch}} (λ _ → 1 , bar) sF 
+unpack : forall {X} -> Vec X 1 -> X
+unpack (x , <>) = x
+batcher : forall {F} {{TF : Traversable F}} -> F One -> forall {X} -> Batch X (F X)
+batcher {F} {{TF}} sF {X} = traverse {F} {{TF}} {Batch X} {{ABatch}} (λ _ → 1 , unpack) sF 
 
 coherence : forall {F} {{TF : Traversable F}} {X} -> TraversableOKP F 
             -> (sF : F One) -> 
-               fst (foo {F} {{TF}} sF {X}) == 
+               fst (batcher {F} {{TF}} sF {X}) == 
                Traversable.traverse {F} TF {λ _ → Nat} {One} {One} {{monoidApplicative}} (λ _ → 1) sF
 coherence {F} {{TF}} {X} tokF u = 
-   fst (Traversable.traverse TF (λ _ → 1 , bar) u) 
-     << TraversableOKP.lawHom {F} {TF} tokF {Batch X} {{ABatch}} {λ _ → Nat} {{monoidApplicative}} fst (λ _ → 1 , bar) 
+   fst (Traversable.traverse TF (λ _ → 1 , unpack) u) 
+     << TraversableOKP.lawHom {F} {TF} tokF {Batch X} {{ABatch}} {λ _ → Nat} {{monoidApplicative}} fst (λ _ → 1 , unpack) 
         (record { respPure = λ {X₁} x → refl
                 ; respApp  = λ f s → refl }) u !!= 
    (Traversable.traverse TF {λ _ → Nat} {One {lzero}} {X}
@@ -1105,7 +1105,7 @@ coherence {F} {{TF}} {X} tokF u =
 fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
               forall {X} -> <! normalT F !>N X -> F X
 fromNormal {F} {{TF}} tokf {X} (sF , cF) with (coherence {F} {{TF}} {X} tokf sF) 
-fromNormal {F} {{TF}} tokf {X} (sF , cF) | q with foo {F} {{TF}} sF {X} 
+fromNormal {F} {{TF}} tokf {X} (sF , cF) | q with batcher {F} {{TF}} sF {X} 
 fromNormal {F} {{TF}} tokf {X} (sF , cF) | q | n , csF = csF (subst (symmetry q) (λ u → Vec X u) cF)
 
 -- fixpoints of normal functors
@@ -1126,11 +1126,33 @@ NatInd :  forall {l}(P : Tree NatT -> Set l) ->
           P zeroT ->
           ((n : Tree NatT) -> P n -> P (sucT n)) ->
           (n : Tree NatT) -> P n
-NatInd P z s n = {!!}
+NatInd P z s <$ tt , <>     $> = z
+NatInd P z s <$ ff , n , <> $> = s n (NatInd P z s n) 
 
---Dec : Set -> Set
---Dec X = X + (X -> Zero)
+All : forall {l X}(P : X -> Set l){n} -> Vec X n -> Set l
+All P <>        = One
+All P (x , xs)  = P x * All P xs
 
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
-eq? N sheq? t t' = {!!}
+eq? N sheq? <$ s , t $> <$ s' , t' $> = 
+  (sheq? s s') >>=dec
+  (λ p → 
+  foo t (subst (symmetry p) (λ s → Vec (Tree N) (size N s)) t') 
+  >>=dec (λ q → tt , 
+    subst p (λ x → <$ s , t $> 
+                   == 
+                   <$ x , subst q {!!} {!!} $>) {!!} --<$ s , t $> == <$ s' , t' $>
+  ))
+
+ where
+  _>>=dec_ : forall {X Y} -> Dec X -> (X -> Dec Y) -> Dec Y
+  a >>=dec f = {!!}
+  decTraversable : Traversable Dec
+  decTraversable = record { traverse = {!!} } 
+  trav : forall {G S T} {{AG : Applicative G}} → (S → G T) → (Dec S) → G (Dec T)
+  trav x x₁ = {!!}
+  decAllVec : forall {X Y n} -> (Y -> Dec X) -> Vec Y n -> Dec (Vec X n)
+  decAllVec = {!!}
+  foo : forall {n} -> (t : Vec (Tree N) n) -> (t' : Vec (Tree N) n) -> Dec (t == t')
+  foo {n} t t' = {!!}
