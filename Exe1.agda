@@ -1133,26 +1133,53 @@ All : forall {l X}(P : X -> Set l){n} -> Vec X n -> Set l
 All P <>        = One
 All P (x , xs)  = P x * All P xs
 
+topShape : {N : Normal} -> Tree N -> Shape N
+topShape <$ s , t $> = s
+
+head : forall {X n} -> Vec X (suc n) -> X
+head (x , _) = x
+
+tail : forall {X n} -> Vec X (suc n) -> Vec X n
+tail (_ , t) = t
+
+
+allEq : forall {X} -> ((x x' : X) -> Dec (x == x')) -> forall {n} -> (t t' : Vec X n) -> Dec (t == t')
+allEq eq? <> <> = tt , refl
+allEq eq? (x , t) (x' , t') with eq? x x'
+allEq eq? (x , t) (x' , t') | ff , refutation = ff , (λ proof → refutation (cong head proof)) 
+  
+allEq eq? (x , t) (x' , t') | tt , proof with allEq eq? t t'
+allEq eq? (x , t) (x' , t') | tt , proof | ff , refutor = ff , 
+  (λ lie → refutor (cong tail lie))
+allEq eq? (x , t) (x' , t') | tt , xProof | tt , tProof = tt , 
+  (x , t =!! cong (λ y → y , t) xProof >> x' , t =!! cong (λ u → x' , u) tProof >> x' , t' <QED>)
+
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
-eq? N sheq? <$ s , t $> <$ s' , t' $> = 
-  (sheq? s s') >>=dec
-  (λ p → 
-  foo t (subst (symmetry p) (λ s → Vec (Tree N) (size N s)) t') 
-  >>=dec (λ q → tt , 
-    subst p (λ x → <$ s , t $> 
-                   == 
-                   <$ x , subst q {!!} {!!} $>) {!!} --<$ s , t $> == <$ s' , t' $>
-  ))
-
- where
-  _>>=dec_ : forall {X Y} -> Dec X -> (X -> Dec Y) -> Dec Y
-  a >>=dec f = {!!}
-  decTraversable : Traversable Dec
-  decTraversable = record { traverse = {!!} } 
-  trav : forall {G S T} {{AG : Applicative G}} → (S → G T) → (Dec S) → G (Dec T)
-  trav x x₁ = {!!}
-  decAllVec : forall {X Y n} -> (Y -> Dec X) -> Vec Y n -> Dec (Vec X n)
-  decAllVec = {!!}
-  foo : forall {n} -> (t : Vec (Tree N) n) -> (t' : Vec (Tree N) n) -> Dec (t == t')
-  foo {n} t t' = {!!}
+eq? N sheq? <$ s , t $> <$ s' , t' $> with (sheq? s s')
+eq? N sheq? <$ s , t $> <$ s' , t' $> | ff , shapeRefutation = 
+  ff , (λ p → shapeRefutation (s =!! refl  >> 
+                   topShape ( <$ s , t $> ) =!! cong topShape p >>
+                   topShape <$ s' , t' $> =!! refl >>
+                   s' <QED>)) 
+eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof with allEq (eq? N sheq?) (subst sProof (λ sh → Vec (Tree N) (size N sh)) t) t'
+eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof | ff , refutation 
+  = ff , (λ lie → refutation (gloop sProof lie)) 
+    where
+      unbox : {N : Normal} -> Tree N -> <! N !>N (Tree N)
+      unbox <$ s , t $> = s , t
+      gloop : forall {N : Normal} {s s' t t'} -> 
+              (p : s == s') -> 
+              (q : <$ s , t $> == <$ s' , t' $>) ->  
+              subst p (λ sh → Vec (Tree N) (size N sh)) t == t'
+      gloop refl refl = refl 
+eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof | tt , tProof 
+      = tt , gloop sProof tProof 
+    where 
+      gloop :  forall {N s s' t t'} 
+               -> (p : s == s') 
+               -> (q : subst p (λ sh → Vec (Tree N) (size N sh)) t == t') 
+               -> <$ s , t $> == <$ s' , t' $>
+      gloop {Shape / size} refl refl = refl
+    
+      

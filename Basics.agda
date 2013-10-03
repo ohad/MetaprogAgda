@@ -80,5 +80,7 @@ data Zero : Set where
 magic : forall {l}{A : Set l} -> Zero -> A
 magic ()
 
+{- it would be nicer to reorder the summands, as when proving deciding things we collect the proofs rather than the refutations (at least in these exercises) -}
 Dec : Set -> Set
 Dec X = X + (X -> Zero)
+
