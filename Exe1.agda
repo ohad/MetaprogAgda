@@ -1166,8 +1166,6 @@ eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof with allEq (eq? N sheq?) (su
 eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof | ff , refutation 
   = ff , (λ lie → refutation (gloop sProof lie)) 
     where
-      unbox : {N : Normal} -> Tree N -> <! N !>N (Tree N)
-      unbox <$ s , t $> = s , t
       gloop : forall {N : Normal} {s s' t t'} -> 
               (p : s == s') -> 
               (q : <$ s , t $> == <$ s' , t' $>) ->  
