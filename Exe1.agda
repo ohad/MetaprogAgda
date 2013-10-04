@@ -1143,17 +1143,6 @@ tail : forall {X n} -> Vec X (suc n) -> Vec X n
 tail (_ , t) = t
 
 
-allEq : forall {X} -> ((x x' : X) -> Dec (x == x')) -> forall {n} -> (t t' : Vec X n) -> Dec (t == t')
-allEq eq? <> <> = tt , refl
-allEq eq? (x , t) (x' , t') with eq? x x'
-allEq eq? (x , t) (x' , t') | ff , refutation = ff , (λ proof → refutation (cong head proof)) 
-  
-allEq eq? (x , t) (x' , t') | tt , proof with allEq eq? t t'
-allEq eq? (x , t) (x' , t') | tt , proof | ff , refutor = ff , 
-  (λ lie → refutor (cong tail lie))
-allEq eq? (x , t) (x' , t') | tt , xProof | tt , tProof = tt , 
-  (x , t =!! cong (λ y → y , t) xProof >> x' , t =!! cong (λ u → x' , u) tProof >> x' , t' <QED>)
-
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
 eq? N sheq? <$ s , t $> <$ s' , t' $> with (sheq? s s')
@@ -1162,22 +1151,31 @@ eq? N sheq? <$ s , t $> <$ s' , t' $> | ff , shapeRefutation =
                    topShape ( <$ s , t $> ) =!! cong topShape p >>
                    topShape <$ s' , t' $> =!! refl >>
                    s' <QED>)) 
-eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof with allEq (eq? N sheq?) (subst sProof (λ sh → Vec (Tree N) (size N sh)) t) t'
+eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof with allEq (subst sProof (λ sh → Vec (Tree N) (size N sh)) t) t'
+  where allEq : forall {n} -> (t t' : Vec (Tree N) n) -> Dec (t == t')
+        allEq <> <> = tt , refl
+        allEq (x , t) (x' , t') with eq? N sheq? x x'
+        allEq (x , t) (x' , t') | ff , refutation = ff , (λ proof → refutation (cong head proof)) 
+
+        allEq (x , t) (x' , t') | tt , proof with allEq t t'
+        allEq (x , t) (x' , t') | tt , proof | ff , refutor = ff , 
+          (λ lie → refutor (cong tail lie))
+        allEq (x , t) (x' , t') | tt , xProof | tt , tProof = tt , 
+          (x , t =!! cong (λ y → y , t) xProof >> x' , t =!! cong (λ u → x' , u) tProof >> x' , t' <QED>)
+
 eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof | ff , refutation 
-  = ff , (λ lie → refutation (gloop sProof lie)) 
-    where
-      gloop : forall {N : Normal} {s s' t t'} -> 
-              (p : s == s') -> 
-              (q : <$ s , t $> == <$ s' , t' $>) ->  
-              subst p (λ sh → Vec (Tree N) (size N sh)) t == t'
-      gloop refl refl = refl 
+  = ff , (λ lie → refutation (inspectProofs sProof lie)) 
+  where 
+      inspectProofs : forall {N : Normal} {s s' t t'} 
+                      -> (p : s == s') 
+                      -> (q : <$ s , t $> == <$ s' , t' $>) 
+                      -> subst p (λ sh → Vec (Tree N) (size N sh)) t == t'
+      inspectProofs refl refl = refl 
 eq? N sheq? <$ s , t $> <$ s' , t' $> | tt , sProof | tt , tProof 
-      = tt , gloop sProof tProof 
+      = tt , inspectProofs sProof tProof 
     where 
-      gloop :  forall {N s s' t t'} 
-               -> (p : s == s') 
-               -> (q : subst p (λ sh → Vec (Tree N) (size N sh)) t == t') 
-               -> <$ s , t $> == <$ s' , t' $>
-      gloop {Shape / size} refl refl = refl
-    
-      
+      inspectProofs :  forall {N s s' t t'} 
+                       -> (p : s == s') 
+                       -> (q : subst p (λ sh → Vec (Tree N) (size N sh)) t == t') 
+                       -> <$ s , t $> == <$ s' , t' $>
+      inspectProofs {Shape / size} refl refl = refl
